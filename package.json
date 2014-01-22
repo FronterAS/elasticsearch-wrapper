@@ -2,7 +2,7 @@
   "name": "elasticsearch-wrapper",
   "version": "0.0.0",
   "description": "A wrapper around the elasticsearch module to provide promise based workflow and a readable syntax.",
-  "main": "wrapper.js",
+  "main": "elasticsearch-wrapper.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
