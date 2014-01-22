@@ -1,9 +1,11 @@
+'use strict';
+
 var q = require('q'),
     _ = require('lodash'),
 
-    elasticsearch = require('elasticsearch'),
-
     config,
+
+    elasticsearch = require('elasticsearch'),
 
     client = new elasticsearch.Client({
         host: config.db.url
@@ -17,7 +19,7 @@ var q = require('q'),
     },
 
     adaptResults = function (results) {
-        results = _.map(results, function(result) {
+        results = _.map(results, function (result) {
             return adaptResult(result);
         });
 
@@ -39,11 +41,13 @@ exports.post = function (data) {
         },
 
         into: function (indexName) {
-            var promises = [];
+            var promises = [],
+                errorDefer;
 
             if (!typeName) {
-                defer.reject(new Error('You must specify a type'));
-                return;
+                errorDefer = q.defer();
+                errorDefer.reject(new Error('You must specify a type'));
+                return errorDefer.promise;
             }
 
             data.forEach(function (item) {
@@ -176,7 +180,7 @@ exports.getAll = function (type) {
          *                      pairs
          * @TODO: validate _sort
          */
-        sortBy: function(_sort) {
+        sortBy: function (_sort) {
             sort = _sort;
             return this;
         },
@@ -220,7 +224,7 @@ exports.put = function (data) {
             typeName = _typeName;
             return this;
         },
-        withId: function(_id) {
+        withId: function (_id) {
             data.id = _id;
             return this;
         },
@@ -250,8 +254,8 @@ exports.put = function (data) {
                     JSON.stringify(new Date())
                 );
 
-                _.forEach(response._source, function(value, name) {
-                    if (!data[name] ) {
+                _.forEach(response._source, function (value, name) {
+                    if (!data[name]) {
                         data[name] = value;
                     }
                 });
@@ -263,7 +267,7 @@ exports.put = function (data) {
                     body: {
                         doc: data
                     }
-                }, function(error, response) {
+                }, function (error, response) {
                     if (error) {
                         defer.reject(error);
                         return;
@@ -273,10 +277,13 @@ exports.put = function (data) {
                         type: typeName,
                         id: response._id
                     }, function (error, response) {
+                        var result;
+
                         if (error) {
                             defer.reject(error);
                             return;
                         }
+
                         result = adaptResult(response);
                         defer.resolve(result);
                     });
