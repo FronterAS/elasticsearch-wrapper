@@ -3,6 +3,8 @@ var q = require('q'),
 
     elasticsearch = require('elasticsearch'),
 
+    config,
+
     client = new elasticsearch.Client({
         host: config.db.url
     }),
