@@ -1,0 +1,21 @@
+var development = {
+        "db": {
+            "url": "http://localhost:9200"
+        },
+        "app": {
+            "host":"localhost",
+            "port": 3000
+        }
+    },
+
+    production = {
+        "db": {
+            "url": "http://localhost:9200"
+        },
+        "app": {
+            "host":"localhost",
+            "port": 3000
+        }
+    };
+
+exports.Config = global.process.env.NODE_ENV === 'production' ? production : development;

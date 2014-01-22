@@ -1,7 +1,8 @@
 var q = require('q'),
     _ = require('lodash'),
+
     elasticsearch = require('elasticsearch'),
-    config = require('./config').Config,
+
     client = new elasticsearch.Client({
         host: config.db.url
     }),
@@ -376,4 +377,20 @@ exports.createIndex = function (indexName) {
     });
 
     return defer.promise;
+};
+
+/**
+ * Sets the configuration for the location of the database. Acts as a getter and a setter.
+ *
+ * @see config.js.example
+ * @param  {object} _config The configuration object.
+ * @return {object|undefined}         The configuration object.
+ */
+exports.config = function (_config) {
+    if (!_config) {
+        return config;
+    }
+
+    config = _config;
+    return config;
 };
