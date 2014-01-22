@@ -6,10 +6,7 @@ var q = require('q'),
     config,
 
     elasticsearch = require('elasticsearch'),
-
-    client = new elasticsearch.Client({
-        host: config.db.url
-    }),
+    client,
 
     adaptResult = function (result) {
         var _result = result._source;
@@ -401,5 +398,10 @@ exports.config = function (_config) {
     }
 
     config = _config;
+
+    client = new elasticsearch.Client({
+        host: config.db.url
+    });
+
     return config;
 };
