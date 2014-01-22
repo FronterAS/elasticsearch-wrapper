@@ -339,11 +339,11 @@ exports.checkIndexExists = function (indexName) {
         index: indexName
     }, function (error, response) {
         if (error) {
-            defer.reject(error, indexName);
+            defer.reject(error);
             return;
         }
 
-        defer.resolve(response, indexName);
+        defer.resolve(response);
     });
 
     return defer.promise;
@@ -357,11 +357,11 @@ exports.destroyIndex = function (indexName) {
         index: indexName
     }, function (error, response) {
         if (error) {
-            defer.reject(error, indexName);
+            defer.reject(error);
             return;
         }
 
-        defer.resolve(response, indexName);
+        defer.resolve(response);
     });
 
     return defer.promise;
