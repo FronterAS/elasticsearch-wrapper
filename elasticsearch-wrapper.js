@@ -91,7 +91,7 @@ exports.post = function (data) {
 
 exports.query = function (queryString) {
     var typeName,
-        start = 0,
+        offset = 0,
         sort = '',
         // results to return
         size = 1000000;
@@ -102,8 +102,8 @@ exports.query = function (queryString) {
             return this;
         },
 
-        start: function (_start) {
-            start = _start;
+        withOffset: function (_offset) {
+            offset = _offset;
             return this;
         },
 
@@ -127,7 +127,7 @@ exports.query = function (queryString) {
             client.search({
                 index: indexName,
                 q: queryString,
-                from: start,
+                from: offset,
                 size: size,
                 sort: sort
             }, function (error, results) {
@@ -154,13 +154,13 @@ exports.query = function (queryString) {
  * @return {promise}
  */
 exports.getAll = function (type) {
-    var start = 0,
+    var offset = 0,
         sort = '',
         size = 1000;
 
     return {
-        start: function (_start) {
-            start = _start;
+        withOffset: function (_offset) {
+            offset = _offset;
             return this;
         },
 
@@ -190,7 +190,7 @@ exports.getAll = function (type) {
             client.search({
                 index: indexName,
                 q: '_type:' + type,
-                from: start,
+                from: offset,
                 sort: sort,
                 size: size
             }, function (error, results) {
