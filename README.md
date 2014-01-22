@@ -1,4 +1,4 @@
-elastic-search-wrapper
+elasticsearch-wrapper
 ======================
 
-A wrapper for the elasticsearch nodejs module
+ A wrapper around the elasticsearch module to provide promise based workflow and a readable syntax.
