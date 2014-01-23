@@ -48,7 +48,9 @@ exports.post = function (data) {
             }
 
             data.forEach(function (item) {
-                var defer = q.defer();
+                var defer = q.defer(),
+                    options = null;
+
                 promises.push(defer.promise);
 
                 if (!item.createdAt) {
@@ -57,29 +59,38 @@ exports.post = function (data) {
                     );
                 }
 
-                client.create({
+                options = {
                     index: indexName,
                     type: typeName,
-                    timestamp: JSON.parse(JSON.stringify(new Date())),
+                    timestamp: (new Date()).toISOString(),
                     body: item
-                }, function (error, response) {
-                    if (error) {
-                        defer.reject(error);
-                        return;
-                    }
-                    client.get({
-                        index: indexName,
-                        type: typeName,
-                        id: response._id
-                    }, function (error, result) {
+                };
+
+                if (item.id) {
+                    options.id = item.id
+                }
+
+                client.create(
+                    options,
+                    function (error, response) {
                         if (error) {
                             defer.reject(error);
                             return;
                         }
-                        result = adaptResult(result);
-                        defer.resolve(result);
-                    });
-                });
+                        client.get({
+                            index: indexName,
+                            type: typeName,
+                            id: response._id
+                        }, function (error, result) {
+                            if (error) {
+                                defer.reject(error);
+                                return;
+                            }
+                            result = adaptResult(result);
+                            defer.resolve(result);
+                        });
+                    }
+                );
             });
 
             if (data.length === 1) {
