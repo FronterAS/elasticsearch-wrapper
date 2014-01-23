@@ -191,18 +191,16 @@ exports.query = function (queryString) {
                 };
             }
 
-            client.search(params, function (error, results) {
-                var response;
-
-                if (error) {
-                    defer.reject(error);
-                    return;
-                }
-
-                response = adaptResults(results.hits.hits);
-                response.total = results.hits.total;
-                defer.resolve(response);
-            });
+            client.search(params)
+				.then(function (results) {
+ 	               var response = adaptResults(results.hits.hits);
+    	            response.total = results.hits.total;
+    	            defer.resolve(response);
+    	        }, function (error) {
+    	            console.log(error);
+    	            defer.reject(error);
+    	            return;
+    	        });
 
             return defer.promise;
         }
