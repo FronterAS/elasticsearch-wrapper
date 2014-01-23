@@ -100,7 +100,6 @@ exports.post = function (data) {
     };
 };
 
-
 exports.query = function (queryString) {
     var typeName,
         offset = 0,
@@ -109,7 +108,7 @@ exports.query = function (queryString) {
         size = 1000000;
 
     return {
-        of: function (_typeName) {
+        ofType: function (_typeName) {
             typeName = _typeName;
             return this;
         },
