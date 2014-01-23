@@ -48,8 +48,8 @@ exports.post = function (data) {
             }
 
             data.forEach(function (item) {
-                var defer = q.defer(),
-                    options = null;
+                var params,
+                    defer = q.defer();
 
                 promises.push(defer.promise);
 
@@ -57,7 +57,7 @@ exports.post = function (data) {
                     item.createdAt = (new Date()).toISOString();
                 }
 
-                options = {
+                params = {
                     index: indexName,
                     type: typeName,
                     timestamp: (new Date()).toISOString(),
@@ -65,11 +65,11 @@ exports.post = function (data) {
                 };
 
                 if (item.id) {
-                    options.id = item.id
+                    params.id = item.id
                 }
 
                 client.create(
-                    options,
+                    params,
                     function (error, response) {
                         if (error) {
                             defer.reject(error);
