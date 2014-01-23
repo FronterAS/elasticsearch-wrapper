@@ -405,3 +405,29 @@ exports.config = function (_config) {
 
     return config;
 };
+
+/**
+ * Given a name and a template, it will save it to the es templates.
+ * For more info on how and why to use templates refer to the docs.
+ *
+ * @param {string} name name of the template.
+ * @param {string} template the json template as a string.
+ * @return {object} promise
+ */
+exports.createTemplate = function (name, template) {
+    var defer = q.defer();
+
+    client.indices.putTemplate({
+        name: name,
+        body: template
+    }, function (error, response) {
+        if (error) {
+            defer.reject(error);
+            return;
+        }
+
+        defer.resolve(response);
+    });
+
+    return defer.promise;
+};
