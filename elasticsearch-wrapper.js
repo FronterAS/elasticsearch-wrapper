@@ -407,7 +407,8 @@ exports.config = function (_config) {
     config = _config;
 
     client = new elasticsearch.Client({
-        host: config.db.url
+        host: config.db.url,
+        maxKeepAliveRequests: 1
     });
 
     return config;
