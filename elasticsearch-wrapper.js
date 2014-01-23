@@ -48,38 +48,47 @@ exports.post = function (data) {
             }
 
             data.forEach(function (item) {
-                var defer = q.defer();
+                var params,
+                    defer = q.defer();
+
                 promises.push(defer.promise);
 
                 if (!item.createdAt) {
-                    item.createdAt = JSON.parse(
-                        JSON.stringify(new Date())
-                    );
+                    item.createdAt = (new Date()).toISOString();
                 }
 
-                client.create({
+                params = {
                     index: indexName,
                     type: typeName,
-                    timestamp: JSON.parse(JSON.stringify(new Date())),
+                    timestamp: (new Date()).toISOString(),
                     body: item
-                }, function (error, response) {
-                    if (error) {
-                        defer.reject(error);
-                        return;
-                    }
-                    client.get({
-                        index: indexName,
-                        type: typeName,
-                        id: response._id
-                    }, function (error, result) {
+                };
+
+                if (item.id) {
+                    params.id = item.id
+                }
+
+                client.create(
+                    params,
+                    function (error, response) {
                         if (error) {
                             defer.reject(error);
                             return;
                         }
-                        result = adaptResult(result);
-                        defer.resolve(result);
-                    });
-                });
+                        client.get({
+                            index: indexName,
+                            type: typeName,
+                            id: response._id
+                        }, function (error, result) {
+                            if (error) {
+                                defer.reject(error);
+                                return;
+                            }
+                            result = adaptResult(result);
+                            defer.resolve(result);
+                        });
+                    }
+                );
             });
 
             if (data.length === 1) {
@@ -247,9 +256,7 @@ exports.put = function (data) {
                     return;
                 }
 
-                data.updatedAt = JSON.parse(
-                    JSON.stringify(new Date())
-                );
+                data.updatedAt = (new Date()).toISOString();
 
                 _.forEach(response._source, function (value, name) {
                     if (!data[name]) {
