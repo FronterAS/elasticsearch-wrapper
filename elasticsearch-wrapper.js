@@ -9,7 +9,7 @@ var q = require('q'),
     client,
 
     adaptResult = function (result) {
-        var _result = result._source;
+        var _result = result.fields || result._source;
         _result.id = result.id || result._id;
 
         return _result;
