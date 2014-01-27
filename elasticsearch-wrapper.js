@@ -143,6 +143,7 @@ exports.post = function (data) {
     };
 };
 
+
 exports.query = function (queryString) {
     var typeName,
         offset = 0,
@@ -172,24 +173,32 @@ exports.query = function (queryString) {
         },
 
         from: function (indexName) {
-            var defer = q.defer();
+            var defer = q.defer(),
+                params = {
+                    index: indexName,
+                    type: typeName,
+                    from: offset,
+                    size: size,
+                    sort: sort
+                };
 
-            if (!typeName) {
-                defer.reject(new Error('Type name must be supplied'));
+            if (typeof queryString === 'string') {
+                params.q = queryString;
+
+            } else {
+                params.body = {
+                    'query': queryString
+                };
             }
 
-            client.search({
-                index: indexName,
-                q: queryString,
-                from: offset,
-                size: size,
-                sort: sort
-            }, function (error, results) {
+            client.search(params, function (error, results) {
                 var response;
+
                 if (error) {
                     defer.reject(error);
                     return;
                 }
+
                 response = adaptResults(results.hits.hits);
                 response.total = results.hits.total;
                 defer.resolve(response);
@@ -199,7 +208,6 @@ exports.query = function (queryString) {
         }
     };
 };
-
 
 /**
  * Use to retrieve all results of [type] from [index].
