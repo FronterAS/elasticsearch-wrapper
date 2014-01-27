@@ -143,11 +143,106 @@ exports.post = function (data) {
     };
 };
 
-
-exports.query = function (queryString) {
+/**
+ * For use with the elasticsearch dsl query structure.
+ *
+ * @param  {object} dslQuery
+ * @return {object}
+ */
+exports.dslQuery = function (dslQuery) {
     var typeName,
         offset = 0,
-        sort = '',
+        sort,
+        filter,
+        // results to return
+        size = 1000000;
+
+    return {
+        ofType: function (_typeName) {
+            typeName = _typeName;
+            return this;
+        },
+
+        withOffset: function (_offset) {
+            offset = _offset;
+            return this;
+        },
+
+        filterBy: function (_filter) {
+            filter = _filter;
+            return this;
+        },
+
+        sortBy: function (_sort, direction) {
+            var sortOption = {};
+
+            sort = sort || [];
+
+            sortOption[_sort] = {
+                'order': direction
+            };
+
+            sort.push(sortOption);
+            return this;
+        },
+
+        withSize: function (_size) {
+            size = _size;
+            return this;
+        },
+
+        from: function (indexName) {
+            var defer = q.defer(),
+                params = {
+                    index: indexName,
+                    type: typeName,
+                    from: offset,
+                    size: size
+                },
+                dslParams = {};
+
+            if (sort) {
+                dslParams.sort = sort;
+            }
+
+            if (dslQuery) {
+                dslParams.query = dslQuery;
+            }
+
+            if (filter) {
+                dslParams.filter = filter;
+            }
+
+            params.body = dslParams;
+
+            client.search(params, function (error, results) {
+                var response;
+
+                if (error) {
+                    defer.reject(error);
+                    return;
+                }
+
+                response = adaptResults(results.hits.hits);
+                response.total = results.hits.total;
+                defer.resolve(response);
+            });
+
+            return defer.promise;
+        }
+    };
+};
+
+/**
+ * For use with the elasticsearch url query string.
+ *
+ * @param  {string} queryString
+ * @return {object}
+ */
+exports.stringQuery = function (queryString) {
+    var typeName,
+        offset = 0,
+        sort = [],
         // results to return
         size = 1000000;
 
@@ -179,17 +274,9 @@ exports.query = function (queryString) {
                     type: typeName,
                     from: offset,
                     size: size,
-                    sort: sort
+                    sort: sort,
+                    q: queryString
                 };
-
-            if (typeof queryString === 'string') {
-                params.q = queryString;
-
-            } else {
-                params.body = {
-                    'query': queryString
-                };
-            }
 
             client.search(params, function (error, results) {
                 var response;
@@ -208,6 +295,21 @@ exports.query = function (queryString) {
         }
     };
 };
+
+/**
+ * Convenience function. Depending on whether the query passed as a parameter is an object or a
+ * string depends on which query function is called.
+ *
+ * @param  {string|object} query Accepts both url string query and dsl object query.
+ * @return {object}
+ */
+exports.query = function (query) {
+    if (typeof query === 'string') {
+        return exports.stringQuery(query);
+    } else {
+        return exports.dslQuery(query);
+    }
+}
 
 /**
  * Use to retrieve all results of [type] from [index].
