@@ -112,26 +112,23 @@ exports.post = function (data) {
                 }
 
                 client.create(
-                    params,
-                    function (error, response) {
-                        if (error) {
-                            defer.reject(error);
-                            return;
-                        }
-                        client.get({
-                            index: indexName,
-                            type: typeName,
-                            id: response._id
-                        }, function (error, result) {
-                            if (error) {
-                                defer.reject(error);
-                                return;
-                            }
-                            result = adaptResult(result);
-                            defer.resolve(result);
-                        });
-                    }
-                );
+                    params
+                ).then(function (response) {
+                    client.get({
+                        index: indexName,
+                        type: typeName,
+                        id: response._id
+                    }).then(function (result) {
+                        result = adaptResult(result);
+                        defer.resolve(result);
+                    }, function(error) {
+                        defer.reject(error);
+                        return;
+                    });
+                }, function(error) {
+                    defer.reject(error);
+                    return;
+                });
             });
 
             if (data.length === 1) {
@@ -191,18 +188,16 @@ exports.query = function (queryString) {
                 };
             }
 
-            client.search(params, function (error, results) {
-                var response;
-
-                if (error) {
-                    defer.reject(error);
-                    return;
-                }
-
-                response = adaptResults(results.hits.hits);
-                response.total = results.hits.total;
-                defer.resolve(response);
-            });
+            client.search(params)
+				.then(function (results) {
+ 	               var response = adaptResults(results.hits.hits);
+    	            response.total = results.hits.total;
+    	            defer.resolve(response);
+    	        }, function (error) {
+    	            console.log(error);
+    	            defer.reject(error);
+    	            return;
+    	        });
 
             return defer.promise;
         }
@@ -255,15 +250,13 @@ exports.getAll = function (type) {
                 from: offset,
                 sort: sort,
                 size: size
-            }, function (error, results) {
-                var response;
-                if (error) {
-                    defer.reject(error);
-                    return;
-                }
-                response = adaptResults(results.hits.hits);
+            }).then(function (results) {
+                var response = adaptResults(results.hits.hits);
                 response.total = results.hits.total;
                 defer.resolve(response);
+            }, function (error) {
+                defer.reject(error);
+                return;
             });
 
             return defer.promise;
@@ -299,13 +292,7 @@ exports.put = function (data) {
                 index: indexName,
                 type: typeName,
                 id: data.id
-            }, function (error, response) {
-                if (error) {
-                    // if it didn't find it, do a est.post?
-                    defer.reject(error);
-                    return;
-                }
-
+            }).then(function (response) {
                 data.updatedAt = (new Date()).toISOString();
 
                 _.forEach(response._source, function (value, name) {
@@ -321,27 +308,25 @@ exports.put = function (data) {
                     body: {
                         doc: data
                     }
-                }, function (error, response) {
-                    if (error) {
-                        defer.reject(error);
-                        return;
-                    }
+                }).then(function (response) {
                     client.get({
                         index: indexName,
                         type: typeName,
                         id: response._id
-                    }, function (error, response) {
-                        var result;
-
-                        if (error) {
-                            defer.reject(error);
-                            return;
-                        }
-
-                        result = adaptResult(response);
+                    }).then(function (response) {
+                        var result = adaptResult(response);
                         defer.resolve(result);
+                    }, function(error) {
+                        defer.reject(error);
+                        return;
                     });
+                }, function(error) {
+                    defer.reject(error);
+                    return;
                 });
+            }, function(error) {
+                defer.reject(error);
+                return;
             });
 
             if (data.length === 1) {
@@ -376,12 +361,11 @@ exports.delete = function (typeName) {
                 index: indexName,
                 type: typeName,
                 id: id
-            }, function (error, response) {
-                if (error) {
-                    defer.reject(error);
-                    return;
-                }
+            }).then(function (response) {
                 defer.resolve(response);
+            }, function(error) {
+                defer.reject(error);
+                return;
             });
             return defer.promise;
         }
@@ -394,13 +378,11 @@ exports.checkIndexExists = function (indexName) {
 
     client.indices.exists({
         index: indexName
-    }, function (error, response) {
-        if (error) {
-            defer.reject(error);
-            return;
-        }
-
+    }).then(function (response) {
         defer.resolve(response);
+    }, function(error) {
+        defer.reject(error);
+        return;
     });
 
     return defer.promise;
@@ -412,13 +394,11 @@ exports.destroyIndex = function (indexName) {
 
     client.indices.delete({
         index: indexName
-    }, function (error, response) {
-        if (error) {
-            defer.reject(error);
-            return;
-        }
-
+    }).then(function (response) {
         defer.resolve(response);
+    }, function(error) {
+        defer.reject(error);
+        return;
     });
 
     return defer.promise;
@@ -430,13 +410,11 @@ exports.createIndex = function (indexName) {
 
     client.indices.create({
         index: indexName
-    }, function (error, response) {
-        if (error) {
-            defer.reject(error);
-            return;
-        }
-
+    }).then(function (response) {
         defer.resolve(response);
+    }, function(error) {
+        defer.reject(error);
+        return;
     });
 
     return defer.promise;
@@ -478,13 +456,11 @@ exports.createTemplate = function (name, template) {
     client.indices.putTemplate({
         name: name,
         body: template
-    }, function (error, response) {
-        if (error) {
-            defer.reject(error);
-            return;
-        }
-
+    }).then(function (response) {
         defer.resolve(response);
+    }, function(error) {
+        defer.reject(error);
+        return;
     });
 
     return defer.promise;
