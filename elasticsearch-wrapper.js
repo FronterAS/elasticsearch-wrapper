@@ -10,7 +10,7 @@ var q = require('q'),
 
     adaptResult = function (result) {
         var _result = result._source;
-        _result.id = result._id;
+        _result.id = result.id || result._id;
 
         return _result;
     },
@@ -20,7 +20,7 @@ var q = require('q'),
             return adaptResult(result);
         });
 
-        return results;
+        return {'results': results};
     },
 
     /**
