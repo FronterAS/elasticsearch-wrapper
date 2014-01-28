@@ -566,7 +566,7 @@ exports.config = function (_config) {
     };
 
     if (config.db.logging) {
-        clientOptions.logging = config.db.logging;
+        clientOptions.log = config.db.logging;
     }
 
     client = new elasticsearch.Client(clientOptions);
