@@ -552,16 +552,24 @@ exports.createIndex = function (indexName) {
  * @return {object|undefined}         The configuration object.
  */
 exports.config = function (_config) {
+    var clientOptions;
+
     if (!_config) {
         return config;
     }
 
     config = _config;
 
-    client = new elasticsearch.Client({
+    clientOptions = {
         host: config.db.url,
         maxKeepAliveRequests: 1
-    });
+    };
+
+    if (config.db.logging) {
+        clientOptions.logging = config.db.logging;
+    }
+
+    client = new elasticsearch.Client(clientOptions);
 
     return config;
 };
