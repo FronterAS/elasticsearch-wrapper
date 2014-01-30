@@ -408,7 +408,7 @@ exports.put = function (data) {
                     data.updatedAt = (new Date()).toISOString();
 
                     _.forEach(existingData._source, function (value, key) {
-                        if (!data[key]) {
+                        if (data[key] === undefined) {
                             data[key] = value;
                         }
                     });
