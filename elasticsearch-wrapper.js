@@ -309,7 +309,7 @@ exports.query = function (query) {
     } else {
         return exports.dslQuery(query);
     }
-}
+};
 
 /**
  * Use to retrieve all results of [type] from [index].
