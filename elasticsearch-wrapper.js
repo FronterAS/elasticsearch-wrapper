@@ -373,83 +373,79 @@ exports.getAll = function (type) {
     };
 };
 
-
+/**
+ * PUT data to the supplied index. Used to update existing data.
+ *
+ * @param  {object} data The data to update.
+ * @return {object}
+ */
 exports.put = function (data) {
     var typeName;
 
     return {
+
         ofType: function (_typeName) {
             typeName = _typeName;
             return this;
         },
+
         withId: function (_id) {
             data.id = _id;
             return this;
         },
-        into: function (indexName) {
-            var promises = [],
-                defer = q.defer();
 
-            promises.push(defer.promise);
+        into: function (indexName) {
+            var defer = q.defer(),
+
+                /**
+                 * Loops through the existing data key values and adds any missing from
+                 * the data we want to PUT. Then saves to the elasticsearch index.
+                 *
+                 * @param  {object} existingData The data that exists with the id provided.
+                 * @return {promise}             Resolves to an adapted data set.
+                 */
+                updateExistingData = function (existingData) {
+                    data.updatedAt = (new Date()).toISOString();
+
+                    _.forEach(existingData._source, function (value, key) {
+                        if (!data[key]) {
+                            data[key] = value;
+                        }
+                    });
+
+                    return client.update({
+                        'id': data.id,
+                        'index': indexName,
+                        'type': typeName,
+                        'body': {
+                            'doc': data
+                        }
+                    });
+                };
 
             if (!typeName) {
                 defer.reject(new Error('You must specify a type'));
                 return;
             }
 
-            client.get({
-                index: indexName,
-                type: typeName,
-                id: data.id
-            }, function (error, response) {
-                if (error) {
-                    // if it didn't find it, do a est.post?
+            // GET the data as it exists now...
+            exports.get(data.id).ofType(typeName).from(indexName)
+                // ...update...
+                .then(updateExistingData)
+                // now GET the data again just to make certain it is written and to
+                // make sure that the actual data now stored is returned.
+                .then(function (updatedData) {
+                    return exports.get(updatedData._id).ofType(typeName).from(indexName);
+                })
+                .then(function (updatedData) {
+                    updatedData = adaptResult(updatedData);
+                    defer.resolve(updatedData);
+                })
+                .fail(function (error) {
                     defer.reject(error);
-                    return;
-                }
-
-                data.updatedAt = (new Date()).toISOString();
-
-                _.forEach(response._source, function (value, name) {
-                    if (!data[name]) {
-                        data[name] = value;
-                    }
                 });
 
-                client.update({
-                    index: indexName,
-                    type: typeName,
-                    id: data.id,
-                    body: {
-                        doc: data
-                    }
-                }, function (error, response) {
-                    if (error) {
-                        defer.reject(error);
-                        return;
-                    }
-                    client.get({
-                        index: indexName,
-                        type: typeName,
-                        id: response._id
-                    }, function (error, response) {
-                        var result;
-
-                        if (error) {
-                            defer.reject(error);
-                            return;
-                        }
-
-                        result = adaptResult(response);
-                        defer.resolve(result);
-                    });
-                });
-            });
-
-            if (data.length === 1) {
-                return promises[0];
-            }
-            return q.all(promises);
+            return defer.promise;
         }
     };
 };
