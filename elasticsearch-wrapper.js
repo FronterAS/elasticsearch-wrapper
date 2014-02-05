@@ -58,7 +58,7 @@ var q = require('q'),
                     }
 
                     result = adaptResult(response);
-                    defer.resolve(response);
+                    defer.resolve(result);
                 });
 
                 return defer.promise;
