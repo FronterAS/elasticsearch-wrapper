@@ -434,11 +434,10 @@ exports.put = function (data) {
                 .then(updateExistingData)
                 // now GET the data again just to make certain it is written and to
                 // make sure that the actual data now stored is returned.
-                .then(function (updatedData) {
-                    return exports.get(updatedData._id).ofType(typeName).from(indexName);
+                .then(function (updateResponse) {
+                    return exports.get(updateResponse._id).ofType(typeName).from(indexName);
                 })
                 .then(function (updatedData) {
-                    updatedData = adaptResult(updatedData);
                     defer.resolve(updatedData);
                 })
                 .fail(function (error) {
