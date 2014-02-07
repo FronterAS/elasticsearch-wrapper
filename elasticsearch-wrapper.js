@@ -462,24 +462,35 @@ exports.put = function (data) {
  */
 exports.delete = function (typeName) {
     var id;
+
     return {
         withId: function (_id) {
             id = _id;
             return this;
         },
+
         from: function (indexName) {
             var defer = q.defer();
+
             client.delete({
                 index: indexName,
                 type: typeName,
                 id: id
-            }, function (error, response) {
+            }, function (error, result) {
+                var response;
+
                 if (error) {
                     defer.reject(error);
                     return;
                 }
-                defer.resolve(response);
+
+                // @todo: clean this up
+                defer.resolve({
+                    'results': result.found ? [result._id] : [],
+                    'total': result.found ? 1 : 0
+                });
             });
+
             return defer.promise;
         }
     };
@@ -564,6 +575,7 @@ exports.config = function (_config) {
         clientOptions.log = config.db.logging;
     }
 
+    // @todo: dependency injection needed here
     client = new elasticsearch.Client(clientOptions);
 
     return config;
