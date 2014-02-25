@@ -8,6 +8,22 @@ var q = require('q'),
     elasticsearch = require('elasticsearch'),
     client,
 
+    /**
+     * Looks for an error property and if it doesn't exist creates one.
+     *
+     * @param  {object} error An elasticsearch response containing an error message.
+     * @return {object}       The adapted error.
+     */
+    adaptError = function (error) {
+        if (error && !error.error) {
+            error = {
+                'error': error
+            };
+        }
+
+        return error;
+    },
+
     adaptResult = function (result) {
         var _result = result.fields || result._source;
         _result.id = result.id || result._id;
@@ -53,7 +69,7 @@ var q = require('q'),
                     var result;
 
                     if (error) {
-                        defer.reject(error);
+                        defer.reject(adaptError(error));
                         return;
                     }
 
@@ -115,7 +131,7 @@ exports.post = function (data) {
                     params,
                     function (error, response) {
                         if (error) {
-                            defer.reject(error);
+                            defer.reject(adaptError(error));
                             return;
                         }
                         client.get({
@@ -124,7 +140,7 @@ exports.post = function (data) {
                             id: response._id
                         }, function (error, result) {
                             if (error) {
-                                defer.reject(error);
+                                defer.reject(adaptError(error));
                                 return;
                             }
                             result = adaptResult(result);
@@ -219,7 +235,7 @@ exports.dslQuery = function (dslQuery) {
                 var response;
 
                 if (error) {
-                    defer.reject(error);
+                    defer.reject(adaptError(error));
                     return;
                 }
 
@@ -282,7 +298,7 @@ exports.stringQuery = function (queryString) {
                 var response;
 
                 if (error) {
-                    defer.reject(error);
+                    defer.reject(adaptError(error));
                     return;
                 }
 
@@ -360,7 +376,7 @@ exports.getAll = function (type) {
             }, function (error, results) {
                 var response;
                 if (error) {
-                    defer.reject(error);
+                    defer.reject(adaptError(error));
                     return;
                 }
                 response = adaptResults(results.hits.hits);
@@ -441,7 +457,7 @@ exports.put = function (data) {
                     defer.resolve(updatedData);
                 })
                 .fail(function (error) {
-                    defer.reject(error);
+                    defer.reject(adaptError(error));
                 });
 
             return defer.promise;
@@ -480,7 +496,7 @@ exports.delete = function (typeName) {
                 var response;
 
                 if (error) {
-                    defer.reject(error);
+                    defer.reject(adaptError(error));
                     return;
                 }
 
@@ -504,7 +520,7 @@ exports.checkIndexExists = function (indexName) {
         index: indexName
     }, function (error, response) {
         if (error) {
-            defer.reject(error);
+            defer.reject(adaptError(error));
             return;
         }
 
@@ -522,7 +538,7 @@ exports.destroyIndex = function (indexName) {
         index: indexName
     }, function (error, response) {
         if (error) {
-            defer.reject(error);
+            defer.reject(adaptError(error));
             return;
         }
 
@@ -540,7 +556,7 @@ exports.createIndex = function (indexName) {
         index: indexName
     }, function (error, response) {
         if (error) {
-            defer.reject(error);
+            defer.reject(adaptError(error));
             return;
         }
 
@@ -597,7 +613,7 @@ exports.createTemplate = function (name, template) {
         body: template
     }, function (error, response) {
         if (error) {
-            defer.reject(error);
+            defer.reject(adaptError(error));
             return;
         }
 
