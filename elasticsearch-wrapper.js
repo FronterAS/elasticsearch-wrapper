@@ -527,49 +527,46 @@ exports.put = function (data) {
 /**
  * Delete type from index.
  * @example
- * db.delete('myType').withId(5).from('myIndex');
- * // 'withId' param is the id to delete.
+ * db.delete(id).ofType(type).from('myIndex');
+ * // 'ofType' param is the type to delete.
  * // 'from' param is the string name of the index to delete from.
  *
  * @param  {string} typeName The name of the type to delete.
  * @return {object}
  */
-exports.delete = function (typeName) {
-    var id;
+ exports.delete = function (id) {
+     return {
+         ofType: function (_typeName) {
+             typeName = _typeName;
+             return this;
+         },
 
-    return {
-        withId: function (_id) {
-            id = _id;
-            return this;
-        },
+         from: function (indexName) {
+             var defer = q.defer();
 
-        from: function (indexName) {
-            var defer = q.defer();
+             client.delete({
+                 index: indexName,
+                 type: typeName,
+                 id: id
+             }, function (error, result) {
+                 var response;
 
-            client.delete({
-                index: indexName,
-                type: typeName,
-                id: id
-            }, function (error, result) {
-                var response;
+                 if (error) {
+                     defer.reject(adaptError(error));
+                     return;
+                 }
 
-                if (error) {
-                    defer.reject(adaptError(error));
-                    return;
-                }
+                 // @todo: clean this up
+                 defer.resolve({
+                     'results': result.found ? [result._id] : [],
+                     'total': result.found ? 1 : 0
+                 });
+             });
 
-                // @todo: clean this up
-                defer.resolve({
-                    'results': result.found ? [result._id] : [],
-                    'total': result.found ? 1 : 0
-                });
-            });
-
-            return defer.promise;
-        }
-    };
-};
-
+             return defer.promise;
+         }
+     };
+ };
 
 exports.checkIndexExists = function (indexName) {
     var defer = q.defer();
