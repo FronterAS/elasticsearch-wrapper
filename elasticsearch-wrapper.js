@@ -48,6 +48,10 @@ var q = require('q'),
     get = function (id) {
         var typeName;
 
+        if (_.isArray(id)) {
+            return getMany(id);
+        }
+
         return {
             /**
              * @param  {string} _typeName
@@ -80,13 +84,67 @@ var q = require('q'),
                 return defer.promise;
             }
         };
+    },
+
+    /**
+     * Takes an array of ids to return many results.
+     *
+     * @param {array} ids An array of ids to look up
+     * @return {promise}
+     */
+    getMany = function (ids) {
+        var typeName;
+
+        if (!_.isArray(ids)) {
+            ids = [ids];
+        }
+
+        // Ensure that array has only unique ids.
+        // The second boolean parameter is 'isSorted', and runs much faster.
+        ids = _.uniq(ids, true);
+
+        return {
+            /**
+             * @param  {string} _typeName
+             * @return {string}
+             */
+            'ofType': function (_typeName) {
+                typeName = _typeName;
+                return this;
+            },
+
+            'from': function (indexName) {
+                var defer = q.defer();
+
+                client.mget({
+                    'index': indexName,
+                    'type': typeName,
+                    'body': {
+                        'ids': ids
+                    }
+                }, function (error, response) {
+                    var results;
+
+                    if (error) {
+                        defer.reject(adaptError(error));
+                        return;
+                    }
+
+                    results = adaptResults(response.docs);
+                    results.total = results.results.length;
+                    defer.resolve(results);
+                });
+
+                return defer.promise;
+            }
+        };
     };
 
 
 exports.post = function (data) {
     var typeName;
 
-    if (!Array.isArray(data)) {
+    if (!_.isArray(data)) {
         data = [data];
     }
 
@@ -625,3 +683,4 @@ exports.createTemplate = function (name, template) {
 
 // API
 exports.get = get;
+exports.getMany = getMany;
