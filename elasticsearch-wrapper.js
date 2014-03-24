@@ -605,11 +605,7 @@ exports.deleteByQuery = function (query) {
                     return;
                 }
 
-                // @todo: clean this up
-                defer.resolve({
-                    'results': result.found ? [result._id] : [],
-                    'total': result.found ? 1 : 0
-                });
+                defer.resolve(result._indices[indexName]._shards);
             });
 
             return defer.promise;
