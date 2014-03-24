@@ -391,9 +391,9 @@ exports.stringQuery = function (queryString) {
 exports.query = function (query) {
     if (typeof query === 'string') {
         return exports.stringQuery(query);
-    } else {
-        return exports.dslQuery(query);
     }
+
+    return exports.dslQuery(query);
 };
 
 /**
@@ -545,7 +545,7 @@ exports.put = function (data) {
  * @param  {string} typeName The name of the type to delete.
  * @return {object}
  */
- exports.delete = function (id) {
+exports.deleteById = function (id) {
     var typeName;
 
     return {
@@ -578,7 +578,52 @@ exports.put = function (data) {
             return defer.promise;
         }
     };
- };
+};
+
+exports.deleteByQuery = function (query) {
+    var typeName;
+
+    return {
+        ofType: function (_typeName) {
+            typeName = _typeName;
+            return this;
+        },
+
+         from: function (indexName) {
+            var defer = q.defer();
+
+            client.deleteByQuery({
+                'index': indexName,
+                'type': typeName,
+                'body': {
+                    'query': query
+                }
+            }, function (error, result) {
+
+                if (error) {
+                    defer.reject(adaptError(error));
+                    return;
+                }
+
+                // @todo: clean this up
+                defer.resolve({
+                    'results': result.found ? [result._id] : [],
+                    'total': result.found ? 1 : 0
+                });
+            });
+
+            return defer.promise;
+        }
+    };
+};
+
+exports.delete = function (query) {
+    if (typeof query === 'string') {
+        return exports.deleteById(query);
+    }
+
+    return exports.deleteByQuery(query);
+};
 
 exports.checkIndexExists = function (indexName) {
     var defer = q.defer();
