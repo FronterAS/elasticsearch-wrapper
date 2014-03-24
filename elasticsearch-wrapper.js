@@ -39,6 +39,13 @@ var q = require('q'),
         return {'results': results};
     },
 
+    emptyResult = function () {
+        return q({
+            'results': [],
+            'total': 0
+        });
+    },
+
     /**
      * Takes an array of ids to return many results.
      *
@@ -52,10 +59,6 @@ var q = require('q'),
             ids = [ids];
         }
 
-        // Ensure that array has only unique ids.
-        // The second boolean parameter is 'isSorted', and runs much faster.
-        ids = _.uniq(ids, true);
-
         return {
             /**
              * @param  {string} _typeName
@@ -68,6 +71,14 @@ var q = require('q'),
 
             'from': function (indexName) {
                 var defer = q.defer();
+
+                if (!ids.length) {
+                    return emptyResult();
+                }
+
+                // Ensure that array has only unique ids.
+                // The second boolean parameter is 'isSorted', and runs much faster.
+                ids = _.uniq(ids, true);
 
                 client.mget({
                     'index': indexName,
