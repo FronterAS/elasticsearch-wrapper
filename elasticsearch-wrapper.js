@@ -40,53 +40,6 @@ var q = require('q'),
     },
 
     /**
-     * The most basic GET functionality.
-     *
-     * @param  {string} id The id of the record you wish to retrieve.
-     * @return {object}    The chainable functionality used to build the sentence.
-     */
-    get = function (id) {
-        var typeName;
-
-        if (_.isArray(id)) {
-            return getMany(id);
-        }
-
-        return {
-            /**
-             * @param  {string} _typeName
-             * @return {string}
-             */
-            'ofType': function (_typeName) {
-                typeName = _typeName;
-                return this;
-            },
-
-            'from': function (indexName) {
-                var defer = q.defer();
-
-                client.get({
-                    'index': indexName,
-                    'type': typeName,
-                    'id': id
-                }, function (error, response) {
-                    var result;
-
-                    if (error) {
-                        defer.reject(adaptError(error));
-                        return;
-                    }
-
-                    result = adaptResult(response);
-                    defer.resolve(result);
-                });
-
-                return defer.promise;
-            }
-        };
-    },
-
-    /**
      * Takes an array of ids to return many results.
      *
      * @param {array} ids An array of ids to look up
@@ -133,6 +86,53 @@ var q = require('q'),
                     results = adaptResults(response.docs);
                     results.total = results.results.length;
                     defer.resolve(results);
+                });
+
+                return defer.promise;
+            }
+        };
+    },
+
+    /**
+     * The most basic GET functionality.
+     *
+     * @param  {string} id The id of the record you wish to retrieve.
+     * @return {object}    The chainable functionality used to build the sentence.
+     */
+    get = function (id) {
+        var typeName;
+
+        if (_.isArray(id)) {
+            return getMany(id);
+        }
+
+        return {
+            /**
+             * @param  {string} _typeName
+             * @return {string}
+             */
+            'ofType': function (_typeName) {
+                typeName = _typeName;
+                return this;
+            },
+
+            'from': function (indexName) {
+                var defer = q.defer();
+
+                client.get({
+                    'index': indexName,
+                    'type': typeName,
+                    'id': id
+                }, function (error, response) {
+                    var result;
+
+                    if (error) {
+                        defer.reject(adaptError(error));
+                        return;
+                    }
+
+                    result = adaptResult(response);
+                    defer.resolve(result);
                 });
 
                 return defer.promise;
@@ -535,37 +535,38 @@ exports.put = function (data) {
  * @return {object}
  */
  exports.delete = function (id) {
-     return {
-         ofType: function (_typeName) {
-             typeName = _typeName;
-             return this;
-         },
+    var typeName;
+
+    return {
+        ofType: function (_typeName) {
+            typeName = _typeName;
+            return this;
+        },
 
          from: function (indexName) {
-             var defer = q.defer();
+            var defer = q.defer();
 
-             client.delete({
-                 index: indexName,
-                 type: typeName,
-                 id: id
-             }, function (error, result) {
-                 var response;
+            client.delete({
+                index: indexName,
+                type: typeName,
+                id: id
+            }, function (error, result) {
 
-                 if (error) {
-                     defer.reject(adaptError(error));
-                     return;
-                 }
+                if (error) {
+                    defer.reject(adaptError(error));
+                    return;
+                }
 
-                 // @todo: clean this up
-                 defer.resolve({
-                     'results': result.found ? [result._id] : [],
-                     'total': result.found ? 1 : 0
-                 });
-             });
+                // @todo: clean this up
+                defer.resolve({
+                    'results': result.found ? [result._id] : [],
+                    'total': result.found ? 1 : 0
+                });
+            });
 
-             return defer.promise;
-         }
-     };
+            return defer.promise;
+        }
+    };
  };
 
 exports.checkIndexExists = function (indexName) {
