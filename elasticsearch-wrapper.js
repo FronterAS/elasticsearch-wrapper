@@ -568,11 +568,7 @@ exports.deleteById = function (id) {
                     return;
                 }
 
-                // @todo: clean this up
-                defer.resolve({
-                    'results': result.found ? [result._id] : [],
-                    'total': result.found ? 1 : 0
-                });
+                defer.resolve(result.found ? result._id : null);
             });
 
             return defer.promise;
