@@ -568,7 +568,12 @@ exports.deleteById = function (id) {
                     return;
                 }
 
-                defer.resolve(result.found ? result._id : null);
+                result = {
+                    'results': result.found ? [result._id]: [],
+                    'total': result.found ? 1 : 0
+                }
+
+                defer.resolve(result);
             });
 
             return defer.promise;
