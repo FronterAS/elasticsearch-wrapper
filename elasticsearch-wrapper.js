@@ -405,6 +405,7 @@ exports.query = function (query) {
 exports.getAll = function (type) {
     var offset = 0,
         sort = '',
+        filter,
         size = 1000;
 
     return {
@@ -418,6 +419,11 @@ exports.getAll = function (type) {
             return this;
         },
 
+        filterBy: function (_filter) {
+            filter = _filter;
+            return this;
+        },
+
         /**
          * @param String _sort A comma-separated list of <field>:<direction>
          *                      pairs
@@ -427,8 +433,17 @@ exports.getAll = function (type) {
             sort = _sort;
             return this;
         },
+
         from: function (indexName) {
-            var defer = q.defer();
+            var defer = q.defer(),
+                searchParams = {
+                    index: indexName,
+                    q: '_type:' + type,
+                    from: offset,
+                    sort: sort,
+                    size: size
+                },
+                extraParams = {};
 
             if (!type) {
                 // @TODO: if we ever actually need 'types' as a array, check
@@ -436,18 +451,20 @@ exports.getAll = function (type) {
                 defer.reject(new Error('Type must be supplied'));
             }
 
-            client.search({
-                index: indexName,
-                q: '_type:' + type,
-                from: offset,
-                sort: sort,
-                size: size
-            }, function (error, results) {
+            if (filter) {
+                extraParams.filter = filter;
+            }
+
+            searchParams.body = extraParams;
+
+            client.search(searchParams, function (error, results) {
                 var response;
+
                 if (error) {
                     defer.reject(adaptError(error));
                     return;
                 }
+
                 response = adaptResults(results.hits.hits);
                 response.total = results.hits.total;
                 defer.resolve(response);
@@ -571,7 +588,7 @@ exports.deleteById = function (id) {
                 result = {
                     'results': result.found ? [result._id]: [],
                     'total': result.found ? 1 : 0
-                }
+                };
 
                 defer.resolve(result);
             });
