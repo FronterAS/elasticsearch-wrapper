@@ -755,7 +755,7 @@ exports.createAlias = function (aliasName) {
 
             return defer.promise;
         }
-    }
+    };
 };
 
 exports.checkIndexExists = function (indexName) {
