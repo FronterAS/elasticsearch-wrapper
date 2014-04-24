@@ -28,7 +28,13 @@ DB.query(query).ofType('user').from('myindex')
 
 ## Testing
 
-Testing is done using [Mocha](http://visionmedia.github.io/mocha/) and, once it is installed, is done by simply calling `mocha` in the root directory.
+First, duplicate the **test/config.json.example** file and make relevant changes that apply to your system.
+
+```bash
+cp config.js.example config.js
+```
+
+Then the tests can be run using [Mocha](http://visionmedia.github.io/mocha/).
 
 ```bash
 mocha

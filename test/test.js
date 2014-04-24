@@ -3,12 +3,7 @@
 var assert = require('assert'),
     http = require('http'),
     ew = require('../elasticsearch-wrapper'),
-    config = {
-        db: {
-            url: '192.168.33.10:9200'
-        },
-        index: 'elasticsearch_wrapper_test'
-    },
+    config = require('../config.js').Config,
     testData = [
         { index: { _type: 'example', _id: 1 } },
         { title: 'This is an example', body: 'It has a title and body' },
@@ -22,10 +17,11 @@ describe('elasticsearch-wrapper', function (){
 
     // Create test index and setup wrapper
     before(function (done) {
-        var options = {
-                hostname: config.db.url.replace(/:.*/, ''),
-                port: config.db.url.replace(/.*?:/, ''),
-                path: '/' + config.index + '/_bulk',
+        var host = config.db.url.match(/^.*\/([^:]+?):(\d+).*?$/),
+            options = {
+                hostname: host[1],
+                port: host[2],
+                path: '/' + config.testIndex + '/_bulk',
                 method: 'PUT'
             },
             request = http.request(options, function (response) {
@@ -49,10 +45,11 @@ describe('elasticsearch-wrapper', function (){
 
     // Remove test index
     after(function (done) {
-        var options = {
-                hostname: config.db.url.replace(/:.*/, ''),
-                port: config.db.url.replace(/.*?:/, ''),
-                path: '/' + config.index,
+        var host = config.db.url.match(/^.*\/([^:]+?):(\d+).*?$/),
+            options = {
+                hostname: host[1],
+                port: host[2],
+                path: '/' + config.testIndex,
                 method: 'DELETE'
             },
             request = http.request(options, function () {
@@ -63,13 +60,13 @@ describe('elasticsearch-wrapper', function (){
 
     describe('#createAlias', function () {
         it('should create an alias to an index', function (done) {
-            ew.createAlias('test_create_alias').to(config.index)
+            ew.createAlias('test_create_alias').to(config.testIndex)
                 .then(function (response) {
                     assert.equal(response.acknowledged, true);
                     return ew.getAlias('test_create_alias');
                 })
                 .then(function (indexName) {
-                    assert.equal(indexName, config.index);
+                    assert.equal(indexName, config.testIndex);
                     done();
                 });
         });
@@ -77,9 +74,9 @@ describe('elasticsearch-wrapper', function (){
 
     describe('#deleteAlias', function () {
         it('should delete an alias on an index', function (done) {
-            ew.createAlias('test_create_alias').to(config.index)
+            ew.createAlias('test_create_alias').to(config.testIndex)
                 .then(function () {
-                    return ew.deleteAlias('test_create_alias').from(config.index);
+                    return ew.deleteAlias('test_create_alias').from(config.testIndex);
                 })
                 .then(function (response) {
                     assert.equal(response.acknowledged, true);
@@ -88,7 +85,7 @@ describe('elasticsearch-wrapper', function (){
         });
 
         it('should throw an error if the alias doesn\'t exist', function (done) {
-            ew.deleteAlias('does_not_exist').from(config.index)
+            ew.deleteAlias('does_not_exist').from(config.testIndex)
                 .fail(function (response) {
                     assert.equal(response.error.message,
                         'AliasesMissingException[aliases [[does_not_exist]] missing]');
@@ -99,7 +96,7 @@ describe('elasticsearch-wrapper', function (){
 
     describe('#getMapping()', function () {
         it('should return the mappings for all types', function (done) {
-            ew.getMapping().from(config.index)
+            ew.getMapping().from(config.testIndex)
                 .then(function (mapping) {
                     var keys = Object.keys(mapping);
                     assert.equal(keys.length, 1);
@@ -109,7 +106,7 @@ describe('elasticsearch-wrapper', function (){
         });
 
         it('should return the mappings for a specific type', function (done) {
-            ew.getMapping().ofType('example').from(config.index)
+            ew.getMapping().ofType('example').from(config.testIndex)
                 .then(function (mapping) {
                     var keys = Object.keys(mapping),
                         expected = ['body', 'title', 'user'],
@@ -136,12 +133,12 @@ describe('elasticsearch-wrapper', function (){
         });
 
         it('should return the index name the alias points to', function (done) {
-            ew.createAlias('test_get_alias').to(config.index)
+            ew.createAlias('test_get_alias').to(config.testIndex)
                 .then(function () {
                     return ew.getAlias('test_get_alias');
                 })
                 .then(function (indexName) {
-                    assert.equal(indexName, config.index);
+                    assert.equal(indexName, config.testIndex);
                     done();
                 });
         });
