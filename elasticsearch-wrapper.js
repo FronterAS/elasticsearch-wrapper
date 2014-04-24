@@ -669,7 +669,7 @@ exports.getMapping = function () {
 
                 response = response[indexName].mappings;
                 if (type) {
-                    response = response[type];
+                    response = response[type].properties;
                 }
 
                 defer.resolve(response);

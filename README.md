@@ -25,3 +25,17 @@ DB.query(query).ofType('user').from('myindex')
         console.log('Fetched ' + users.results.length + ' users');
     });
 ```
+
+## Testing
+
+Testing is done using [Mocha](http://visionmedia.github.io/mocha/) and, once it is installed, is done by simply calling `mocha` in the root directory.
+
+```bash
+mocha
+```
+
+You can also use [JSHint](http://jshint.com/) to check if the code complies with the standard.
+
+```bash
+jshint elasticsearch-wrapper.js
+```
