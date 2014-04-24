@@ -677,8 +677,86 @@ exports.getMapping = function () {
 
             return defer.promise;
         }
+    };
+};
+
+/**
+ * Get an alias, providing the index the alias points to (or false if the alias doesn't exist).
+ *
+ * @param {string} aliasName Name of the alias to get
+ * @return {promise}
+ */
+exports.getAlias = function (aliasName) {
+    var defer = q.defer();
+
+    client.indices.getAlias({
+        name: aliasName
+    }, function (error, response) {
+        if (error) {
+            defer.resolve(false);
+        } else {
+            defer.resolve(Object.keys(response)[0]);
+        }
+    });
+
+    return defer.promise;
+};
+
+/**
+ * Delete an alias from an index.
+ *
+ * @param {string} aliasName Name of the alias to delete
+ * @return {object}
+ */
+exports.deleteAlias = function (aliasName) {
+    return {
+        from: function (indexName) {
+            var defer = q.defer();
+
+            client.indices.deleteAlias({
+                index: indexName,
+                name: aliasName
+            }, function (error, response) {
+                if (error) {
+                    defer.reject(adaptError(error));
+                    return;
+                }
+
+                defer.resolve(response);
+            });
+
+            return defer.promise;
+        }
+    };
+};
+
+/**
+ * Create an alias to an index.
+ *
+ * @param {string} aliasName Name of the alias to create
+ * @return {object}
+ */
+exports.createAlias = function (aliasName) {
+    return {
+        to: function (indexName) {
+            var defer = q.defer();
+
+            client.indices.putAlias({
+                index: indexName,
+                name: aliasName
+            }, function (error, response) {
+                if (error) {
+                    defer.reject(adaptError(error));
+                    return;
+                }
+
+                defer.resolve(response);
+            });
+
+            return defer.promise;
+        }
     }
-}
+};
 
 exports.checkIndexExists = function (indexName) {
     var defer = q.defer();
