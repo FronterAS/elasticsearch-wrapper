@@ -639,6 +639,47 @@ exports.delete = function (query) {
     return exports.deleteByQuery(query);
 };
 
+/**
+ * Get the mapping of an index.
+ *
+ * @return {object}
+ */
+exports.getMapping = function () {
+    var type;
+
+    return {
+        ofType: function (_type) {
+            type = _type;
+            return this;
+        },
+
+        from: function (indexName) {
+            var defer = q.defer(),
+                params = { index: indexName };
+
+            if (type) {
+                params.type = type;
+            }
+
+            client.indices.getMapping(params, function (error, response) {
+                if (error) {
+                    defer.reject(adaptError(error));
+                    return;
+                }
+
+                response = response[indexName].mappings;
+                if (type) {
+                    response = response[type];
+                }
+
+                defer.resolve(response);
+            });
+
+            return defer.promise;
+        }
+    }
+}
+
 exports.checkIndexExists = function (indexName) {
     var defer = q.defer();
 
