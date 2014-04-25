@@ -640,6 +640,29 @@ exports.delete = function (query) {
 };
 
 /**
+ * Bulk perform actions.
+ *
+ * @param {array} actions
+ * @return {promise}
+ */
+exports.bulk = function (actions) {
+    var defer = q.defer();
+
+    client.bulk({
+        body: actions
+    }, function (error, response) {
+        if (error) {
+            defer.reject(adaptError(error));
+        } else {
+            defer.resolve(response);
+        }
+    });
+
+    return defer.promise;
+};
+
+
+/**
  * Get the mapping of an index.
  *
  * @return {object}

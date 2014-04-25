@@ -58,6 +58,33 @@ describe('elasticsearch-wrapper', function (){
             request.end();
     });
 
+    describe('#bulk', function () {
+        it('should create documents using bulk actions', function (done) {
+            var actions = [
+                { index: { _index: 'test', _type: 'example', _id: 1 } },
+                { title: 'Test', body: 'Hello World' },
+                { index: { _index: 'test', _type: 'example', _id: 2 } },
+                { title: 'Another Test', body: 'I know a bank where the wild thyme blows' }
+            ];
+            ew.bulk(actions)
+                .then(function (response) {
+                    assert.equal(response.errors, false);
+                    return ew.get([1, 2]).ofType('example').from('test');
+                })
+                .then(function (response) {
+                    var expected = {
+                        results: [
+                            { title: 'Test', body: 'Hello World', id: 1 },
+                            { title: 'Another Test', body: 'I know a bank where the wild thyme blows', id: 2 }
+                        ],
+                        total: 2
+                    };
+                    assert.deepEqual(response, expected);
+                    done();
+                });
+        });
+    });
+
     describe('#createAlias', function () {
         it('should create an alias to an index', function (done) {
             ew.createAlias('test_create_alias').to(config.testIndex)
