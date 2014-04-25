@@ -617,13 +617,21 @@ exports.deleteByQuery = function (query) {
                     'query': query
                 }
             }, function (error, result) {
+                var index;
 
                 if (error) {
                     defer.reject(adaptError(error));
                     return;
                 }
 
-                defer.resolve(result._indices[indexName]._shards);
+                if (result._indices.hasOwnProperty(indexName)) {
+                    index = indexName;
+                } else {
+                    // assumes we're using an alias
+                    index = Object.keys(result._indices)[0];
+                }
+
+                defer.resolve(result._indices[index]._shards);
             });
 
             return defer.promise;
