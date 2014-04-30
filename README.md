@@ -6,7 +6,7 @@ A wrapper around the elasticsearch module to provide promise based workflow and 
 ## Getting started
 
 Add the dependency to your package.json
-```
+```json
 "dependencies": {
   "elasticsearch-wrapper": "git://github.com/FronterAS/elasticsearch-wrapper.git#master"
 }
@@ -14,15 +14,30 @@ Add the dependency to your package.json
 
 ## Usage
 
-The ElasticSearch wrapper depends heavily on chaining method calls to perform actions with the last method which performs the actual action returning a promise.
+To use the wrapper, you first need to setup the config parameters, which at its barest requires a URL to the ElasticSearch instance.
 
 ```js
-var DB = require('elasticsearch-wrapper'),
-    query = { term: { username: "bob" } };
+var DB = require('elasticsearch-wrapper');
 
-DB.query(query).ofType('user').from('myindex')
-    .then(function (users) {
-        console.log('Fetched ' + users.results.length + ' users');
+DB.config({
+    db: {
+        url: 'http://localhost:9200'
+    }
+});
+```
+
+The ElasticSearch wrapper depends heavily on chaining method calls to perform actions with the last method (which performs the actual action) returning a promise.
+
+```js
+var query = { match: { body: 'test' } },
+    filter = { term: { user: 1337 } };
+
+// Query for articles filtered by user
+DB.query(query).ofType('article').filterBy(filter).from('my_index')
+    .done(function (response) {
+        console.log('Fetched ' + response.results.length + ' articles');
+    }, function (response) {
+        console.log('ElasticSearch Error: ' + response.error.message);
     });
 ```
 
