@@ -651,7 +651,7 @@ exports.delete = function (query) {
  * Bulk perform actions.
  *
  * @param {array} actions
- * @return {promise}
+ * @return {object} Promise which resolves with the response from ElasticSearch
  */
 exports.bulk = function (actions) {
     var defer = q.defer();
