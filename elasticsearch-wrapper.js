@@ -673,7 +673,7 @@ exports.bulk = function (actions) {
 /**
  * Get the mapping of an index.
  *
- * @return {object}
+ * @return {object} Object containing methods to filter or perform the request
  */
 exports.getMapping = function () {
     var type;
@@ -699,6 +699,7 @@ exports.getMapping = function () {
                 }
 
                 response = response[indexName].mappings;
+
                 if (type) {
                     response = response[type].properties;
                 }
@@ -715,7 +716,7 @@ exports.getMapping = function () {
  * Get an alias, providing the index the alias points to (or false if the alias doesn't exist).
  *
  * @param {string} aliasName Name of the alias to get
- * @return {promise}
+ * @return {object} Promise which resolves with the index name (or false if it doesn't exist)
  */
 exports.getAlias = function (aliasName) {
     var defer = q.defer();
@@ -737,7 +738,7 @@ exports.getAlias = function (aliasName) {
  * Delete an alias from an index.
  *
  * @param {string} aliasName Name of the alias to delete
- * @return {object}
+ * @return {object} Object containing method to specify index
  */
 exports.deleteAlias = function (aliasName) {
     return {
@@ -765,7 +766,7 @@ exports.deleteAlias = function (aliasName) {
  * Create an alias to an index.
  *
  * @param {string} aliasName Name of the alias to create
- * @return {object}
+ * @return {object} Object containing method to specify index
  */
 exports.createAlias = function (aliasName) {
     return {

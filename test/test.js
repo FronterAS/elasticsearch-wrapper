@@ -55,6 +55,7 @@ describe('elasticsearch-wrapper', function (){
             request = http.request(options, function () {
                 done();
             });
+
             request.end();
     });
 
@@ -66,108 +67,136 @@ describe('elasticsearch-wrapper', function (){
                 { index: { _index: 'test', _type: 'example', _id: 2 } },
                 { title: 'Another Test', body: 'I know a bank where the wild thyme blows' }
             ];
+
+            function getExamples (response) {
+                assert.equal(response.errors, false);
+                return ew.get([1, 2]).ofType('example').from('test');
+            }
+
+            function validateResults (response) {
+                var expected = {
+                    results: [
+                        { title: 'Test', body: 'Hello World', id: 1 },
+                        { title: 'Another Test', body: 'I know a bank where the wild thyme blows', id: 2 }
+                    ],
+                    total: 2
+                };
+                assert.deepEqual(response, expected);
+            }
+
             ew.bulk(actions)
-                .then(function (response) {
-                    assert.equal(response.errors, false);
-                    return ew.get([1, 2]).ofType('example').from('test');
-                })
-                .then(function (response) {
-                    var expected = {
-                        results: [
-                            { title: 'Test', body: 'Hello World', id: 1 },
-                            { title: 'Another Test', body: 'I know a bank where the wild thyme blows', id: 2 }
-                        ],
-                        total: 2
-                    };
-                    assert.deepEqual(response, expected);
-                    done();
-                });
+                .then(getExamples)
+                .then(validateResults)
+                .done(done);
         });
     });
 
     describe('#createAlias', function () {
         it('should create an alias to an index', function (done) {
+            function getAlias (response) {
+                assert.equal(response.acknowledged, true);
+                return ew.getAlias('test_create_alias');
+            }
+
+            function validateIndexName (indexName) {
+                assert.equal(indexName, config.testIndex);
+            }
+
             ew.createAlias('test_create_alias').to(config.testIndex)
-                .then(function (response) {
-                    assert.equal(response.acknowledged, true);
-                    return ew.getAlias('test_create_alias');
-                })
-                .then(function (indexName) {
-                    assert.equal(indexName, config.testIndex);
-                    done();
-                });
+                .then(getAlias)
+                .then(validateIndexName)
+                .done(done);
         });
     });
 
     describe('#deleteAlias', function () {
         it('should delete an alias on an index', function (done) {
+            function deleteAlias (response) {
+                assert.equal(response.acknowledged, true);
+                return ew.deleteAlias('test_create_alias').from(config.testIndex);
+            }
+
+            function validateResponse (response) {
+                assert.equal(response.acknowledged, true);
+            }
+
             ew.createAlias('test_create_alias').to(config.testIndex)
-                .then(function () {
-                    return ew.deleteAlias('test_create_alias').from(config.testIndex);
-                })
-                .then(function (response) {
-                    assert.equal(response.acknowledged, true);
-                    done();
-                });
+                .then(deleteAlias)
+                .then(validateResponse)
+                .done(done);
         });
 
         it('should throw an error if the alias doesn\'t exist', function (done) {
+            function validateErrorMessage (response) {
+                assert.equal(
+                    response.error.message,
+                    'AliasesMissingException[aliases [[does_not_exist]] missing]'
+                );
+            }
+
             ew.deleteAlias('does_not_exist').from(config.testIndex)
-                .fail(function (response) {
-                    assert.equal(response.error.message,
-                        'AliasesMissingException[aliases [[does_not_exist]] missing]');
-                    done();
-                });
+                .fail(validateErrorMessage)
+                .done(done);
         });
     });
 
     describe('#getMapping()', function () {
         it('should return the mappings for all types', function (done) {
+            function validateMappingKeys (mapping) {
+                var keys = Object.keys(mapping);
+                assert.equal(keys.length, 1);
+                assert.equal(keys[0], 'example');
+            }
+
             ew.getMapping().from(config.testIndex)
-                .then(function (mapping) {
-                    var keys = Object.keys(mapping);
-                    assert.equal(keys.length, 1);
-                    assert.equal(keys[0], 'example');
-                    done();
-                });
+                .then(validateMappingKeys)
+                .done(done);
         });
 
         it('should return the mappings for a specific type', function (done) {
+            function validateMapping (mapping) {
+                var keys = Object.keys(mapping),
+                    expected = ['body', 'title', 'user'],
+                    i;
+
+                assert.equal(keys.length, expected.length);
+
+                for (i = 0; i < expected.length; i += 1) {
+                    // is there a better way to do this?
+                    assert.notStrictEqual(keys.indexOf(expected[i]), -1);
+                }
+            }
+
             ew.getMapping().ofType('example').from(config.testIndex)
-                .then(function (mapping) {
-                    var keys = Object.keys(mapping),
-                        expected = ['body', 'title', 'user'],
-                        i;
-
-                    assert.equal(keys.length, expected.length);
-                    for (i = 0; i < expected.length; i += 1) {
-                        // is there a better way to do this?
-                        assert.notStrictEqual(keys.indexOf(expected[i]), -1);
-                    }
-
-                    done();
-                });
+                .then(validateMapping)
+                .done(done);
         });
     });
 
     describe('#getAlias()', function() {
         it('should return false if the alias doesn\'t exist', function (done) {
+            function validateIndexName (indexName) {
+                assert.strictEqual(indexName, false);
+            }
+
             ew.getAlias('does_not_exist')
-                .then(function (indexName) {
-                    assert.strictEqual(indexName, false);
-                    done();
-                });
+                .then(validateIndexName)
+                .done(done);
         });
 
         it('should return the index name the alias points to', function (done) {
+            function getAlias () {
+                return ew.getAlias('test_get_alias');
+            }
+
+            function validateIndexName (indexName) {
+                assert.equal(indexName, config.testIndex);
+            }
+
             ew.createAlias('test_get_alias').to(config.testIndex)
-                .then(function () {
-                    return ew.getAlias('test_get_alias');
-                })
-                .then(function (indexName) {
-                    assert.equal(indexName, config.testIndex);
-                    done();
-                });
+                .then(getAlias)
+                .then(validateIndexName)
+                .done(done);
         });
     });
 
