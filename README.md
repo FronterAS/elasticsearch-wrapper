@@ -1,4 +1,4 @@
-elasticsearch-wrapper
+elasticsearch-wrapper [![Build Status](https://travis-ci.org/FronterAS/elasticsearch-wrapper.svg)](https://travis-ci.org/FronterAS/elasticsearch-wrapper)
 ======================
 
 A wrapper around the elasticsearch module to provide promise based workflow and a readable syntax.
