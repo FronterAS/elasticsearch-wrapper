@@ -1,0 +1,17 @@
+language: node_js
+
+node_js:
+    - "0.10"
+
+services:
+    - elasticsearch
+
+install:
+    - npm install -g mocha
+    - npm install
+
+before_script:
+    - sed s/trace/error/ config.js.example > config.js
+
+script:
+    - mocha

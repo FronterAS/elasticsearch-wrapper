@@ -617,13 +617,21 @@ exports.deleteByQuery = function (query) {
                     'query': query
                 }
             }, function (error, result) {
+                var index;
 
                 if (error) {
                     defer.reject(adaptError(error));
                     return;
                 }
 
-                defer.resolve(result._indices[indexName]._shards);
+                if (result._indices.hasOwnProperty(indexName)) {
+                    index = indexName;
+                } else {
+                    // assumes we're using an alias
+                    index = Object.keys(result._indices)[0];
+                }
+
+                defer.resolve(result._indices[index]._shards);
             });
 
             return defer.promise;
@@ -637,6 +645,149 @@ exports.delete = function (query) {
     }
 
     return exports.deleteByQuery(query);
+};
+
+/**
+ * Bulk perform actions.
+ *
+ * @param {array} actions
+ * @return {object} Promise which resolves with the response from ElasticSearch
+ */
+exports.bulk = function (actions) {
+    var defer = q.defer();
+
+    client.bulk({
+        body: actions
+    }, function (error, response) {
+        if (error) {
+            defer.reject(adaptError(error));
+        } else {
+            defer.resolve(response);
+        }
+    });
+
+    return defer.promise;
+};
+
+
+/**
+ * Get the mapping of an index.
+ *
+ * @return {object} Object containing methods to filter or perform the request
+ */
+exports.getMapping = function () {
+    var type;
+
+    return {
+        ofType: function (_type) {
+            type = _type;
+            return this;
+        },
+
+        from: function (indexName) {
+            var defer = q.defer(),
+                params = { index: indexName };
+
+            if (type) {
+                params.type = type;
+            }
+
+            client.indices.getMapping(params, function (error, response) {
+                if (error) {
+                    defer.reject(adaptError(error));
+                    return;
+                }
+
+                response = response[indexName].mappings;
+
+                if (type) {
+                    response = response[type].properties;
+                }
+
+                defer.resolve(response);
+            });
+
+            return defer.promise;
+        }
+    };
+};
+
+/**
+ * Get an alias, providing the index the alias points to (or false if the alias doesn't exist).
+ *
+ * @param {string} aliasName Name of the alias to get
+ * @return {object} Promise which resolves with the index name (or false if it doesn't exist)
+ */
+exports.getAlias = function (aliasName) {
+    var defer = q.defer();
+
+    client.indices.getAlias({
+        name: aliasName
+    }, function (error, response) {
+        if (error) {
+            defer.resolve(false);
+        } else {
+            defer.resolve(Object.keys(response)[0]);
+        }
+    });
+
+    return defer.promise;
+};
+
+/**
+ * Delete an alias from an index.
+ *
+ * @param {string} aliasName Name of the alias to delete
+ * @return {object} Object containing method to specify index
+ */
+exports.deleteAlias = function (aliasName) {
+    return {
+        from: function (indexName) {
+            var defer = q.defer();
+
+            client.indices.deleteAlias({
+                index: indexName,
+                name: aliasName
+            }, function (error, response) {
+                if (error) {
+                    defer.reject(adaptError(error));
+                    return;
+                }
+
+                defer.resolve(response);
+            });
+
+            return defer.promise;
+        }
+    };
+};
+
+/**
+ * Create an alias to an index.
+ *
+ * @param {string} aliasName Name of the alias to create
+ * @return {object} Object containing method to specify index
+ */
+exports.createAlias = function (aliasName) {
+    return {
+        to: function (indexName) {
+            var defer = q.defer();
+
+            client.indices.putAlias({
+                index: indexName,
+                name: aliasName
+            }, function (error, response) {
+                if (error) {
+                    defer.reject(adaptError(error));
+                    return;
+                }
+
+                defer.resolve(response);
+            });
+
+            return defer.promise;
+        }
+    };
 };
 
 exports.checkIndexExists = function (indexName) {
