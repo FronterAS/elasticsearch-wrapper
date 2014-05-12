@@ -7,7 +7,18 @@ module.exports = function (grunt) {
 
         clean: {
             coverage: {
-                src: ['dist', 'coverage/report.html']
+                src: ['dist', 'coverage/test', 'coverage/report.html']
+            }
+        },
+
+        copy: {
+            coverage: {
+                src: ['src/**/*.js'],
+                dest: 'coverage/test/'
+            },
+            dist: {
+                src: ['src/**'],
+                dest: 'dist/'
             }
         },
 
@@ -37,16 +48,11 @@ module.exports = function (grunt) {
             }
         },
 
-        coverage: {
-            options: {
-                reporter: 'html-cov',
-                // use the quiet flag to suppress the mocha console output
-                quiet: true,
-                // specify a destination file to capture the mocha
-                // output (the quiet option does not suppress this)
-                captureFile: 'coverage/report.html'
-            },
-            src: ['test/test.js']
+        blanket: {
+            coverage: {
+                src: ['src/'],
+                dest: 'coverage/src/'
+            }
         },
 
         mochaTest: {
@@ -61,6 +67,15 @@ module.exports = function (grunt) {
                 },
 
                 src: ['test/spechelper.js', 'test/test.js']
+            },
+
+            coverage: {
+                options: {
+                    reporter: 'html-cov',
+                    // quiet: true,
+                    captureFile: 'coverage/report.html'
+                },
+                src: ['coverage/test/**/*.js']
             }
         }
     });
@@ -71,11 +86,11 @@ module.exports = function (grunt) {
 
     grunt.loadNpmTasks('grunt-jscs-checker');
     grunt.loadNpmTasks('grunt-mocha-test');
-    grunt.loadNpmTasks('grunt-blanket-mocha');
+    grunt.loadNpmTasks('grunt-blanket');
 
     grunt.registerTask('test', ['jshint', 'jscs', 'mochaTest']);
 
-    grunt.registerTask('build', ['test']);
+    grunt.registerTask('build', ['clean', 'copy:coverage', 'test', 'copy:dist']);
 
     grunt.registerTask('default', ['build']);
 };
