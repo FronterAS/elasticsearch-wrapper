@@ -406,11 +406,17 @@ exports.getAll = function (type) {
     var offset = 0,
         sort = '',
         filter,
+        fields,
         size = 1000;
 
     return {
         withOffset: function (_offset) {
             offset = _offset;
+            return this;
+        },
+
+        fields: function (_fields) {
+            fields = _fields;
             return this;
         },
 
@@ -449,6 +455,10 @@ exports.getAll = function (type) {
                 // @TODO: if we ever actually need 'types' as a array, check
                 // back in git history.
                 defer.reject(new Error('Type must be supplied'));
+            }
+
+            if (fields) {
+                searchParams.fields = fields;
             }
 
             if (filter) {
