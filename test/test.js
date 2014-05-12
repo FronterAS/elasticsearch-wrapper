@@ -2,22 +2,34 @@
 
 var assert = require('assert'),
     http = require('http'),
-    ew = require('../elasticsearch-wrapper'),
+    ew = require('../src/elasticsearch-wrapper'),
     config = require('../config.js').Config,
     testData = [
-        { index: { _type: 'example', _id: 1 } },
-        { title: 'This is an example', body: 'It has a title and body' },
-        { index: { _type: 'example', _id: 2 } },
-        { title: 'Another example', user: 1234 },
-        { index: { _type: 'example', _id: 3 } },
-        { title: 'Final example', body: 'Broad shoulders and narrow waist', user: 1337 }
-    ];
+        {index: {_type: 'example', _id: 1}},
+        {title: 'This is an example', body: 'It has a title and body'},
+        {index: {_type: 'example', _id: 2}},
+        {title: 'Another example', user: 1234},
+        {index: {_type: 'example', _id: 3}},
+        {title: 'Final example', body: 'Broad shoulders and narrow waist', user: 1337}
+    ],
 
-describe('elasticsearch-wrapper', function (){
+    makeParams = function (overrides) {
+        return {
+            index: overrides.index || 'anIndex',
+            q: '_type:' + (overrides.type || 'things'),
+            from: overrides.from || 0,
+            sort: overrides.sort || '',
+            size: overrides.size || 1000,
+            body: overrides.body || {}
+        };
+    };
+
+describe('elasticsearch-wrapper', function () {
 
     // Create test index and setup wrapper
     before(function (done) {
-        var host = config.db.url.match(/^.*\/([^:]+?):(\d+).*?$/),
+        var i,
+            host = config.db.url.match(/^.*\/([^:]+?):(\d+).*?$/),
             options = {
                 hostname: host[1],
                 port: host[2],
@@ -29,8 +41,7 @@ describe('elasticsearch-wrapper', function (){
                     ew.config(config);
                     done();
                 });
-            }),
-            i;
+            });
 
         request.on('error', function (e) {
             throw new Error('HTTP error: ' + e.message);
@@ -56,33 +67,42 @@ describe('elasticsearch-wrapper', function (){
                 done();
             });
 
-            request.end();
+        request.end();
     });
 
     describe('#bulk', function () {
         it('should create documents using bulk actions', function (done) {
             var actions = [
-                { index: { _index: 'test', _type: 'example', _id: 1 } },
-                { title: 'Test', body: 'Hello World' },
-                { index: { _index: 'test', _type: 'example', _id: 2 } },
-                { title: 'Another Test', body: 'I know a bank where the wild thyme blows' }
-            ];
+                    {index: {_index: 'test', _type: 'example', _id: 1}},
+                    {title: 'Test', body: 'Hello World'},
+                    {index: {_index: 'test', _type: 'example', _id: 2}},
+                    {title: 'Another Test', body: 'I know a bank where the wild thyme blows'}
+                ],
 
-            function getExamples (response) {
-                assert.equal(response.errors, false);
-                return ew.get([1, 2]).ofType('example').from('test');
-            }
+                getExamples = function  (response) {
+                    assert.equal(response.errors, false);
+                    return ew.get([1, 2]).ofType('example').from('test');
+                },
 
-            function validateResults (response) {
-                var expected = {
-                    results: [
-                        { title: 'Test', body: 'Hello World', id: 1 },
-                        { title: 'Another Test', body: 'I know a bank where the wild thyme blows', id: 2 }
-                    ],
-                    total: 2
+                validateResults = function (response) {
+                    var expected = {
+                        results: [
+                            {
+                                title: 'Test',
+                                body: 'Hello World',
+                                id: 1
+                            },
+                            {
+                                title: 'Another Test',
+                                body: 'I know a bank where the wild thyme blows',
+                                id: 2
+                            }
+                        ],
+                        total: 2
+                    };
+
+                    assert.deepEqual(response, expected);
                 };
-                assert.deepEqual(response, expected);
-            }
 
             ew.bulk(actions)
                 .then(getExamples)
@@ -93,14 +113,14 @@ describe('elasticsearch-wrapper', function (){
 
     describe('#createAlias', function () {
         it('should create an alias to an index', function (done) {
-            function getAlias (response) {
-                assert.equal(response.acknowledged, true);
-                return ew.getAlias('test_create_alias');
-            }
+            var getAlias = function (response) {
+                    assert.equal(response.acknowledged, true);
+                    return ew.getAlias('test_create_alias');
+                },
 
-            function validateIndexName (indexName) {
-                assert.equal(indexName, config.testIndex);
-            }
+                validateIndexName = function (indexName) {
+                    assert.equal(indexName, config.testIndex);
+                };
 
             ew.createAlias('test_create_alias').to(config.testIndex)
                 .then(getAlias)
@@ -111,14 +131,14 @@ describe('elasticsearch-wrapper', function (){
 
     describe('#deleteAlias', function () {
         it('should delete an alias on an index', function (done) {
-            function deleteAlias (response) {
-                assert.equal(response.acknowledged, true);
-                return ew.deleteAlias('test_create_alias').from(config.testIndex);
-            }
+            var deleteAlias = function (response) {
+                    assert.equal(response.acknowledged, true);
+                    return ew.deleteAlias('test_create_alias').from(config.testIndex);
+                },
 
-            function validateResponse (response) {
-                assert.equal(response.acknowledged, true);
-            }
+                validateResponse = function (response) {
+                    assert.equal(response.acknowledged, true);
+                };
 
             ew.createAlias('test_create_alias').to(config.testIndex)
                 .then(deleteAlias)
@@ -127,12 +147,12 @@ describe('elasticsearch-wrapper', function (){
         });
 
         it('should throw an error if the alias doesn\'t exist', function (done) {
-            function validateErrorMessage (response) {
+            var validateErrorMessage = function (response) {
                 assert.equal(
                     response.error.message,
                     'AliasesMissingException[aliases [[does_not_exist]] missing]'
                 );
-            }
+            };
 
             ew.deleteAlias('does_not_exist').from(config.testIndex)
                 .fail(validateErrorMessage)
@@ -142,11 +162,11 @@ describe('elasticsearch-wrapper', function (){
 
     describe('#getMapping()', function () {
         it('should return the mappings for all types', function (done) {
-            function validateMappingKeys (mapping) {
+            var validateMappingKeys = function (mapping) {
                 var keys = Object.keys(mapping);
                 assert.equal(keys.length, 1);
                 assert.equal(keys[0], 'example');
-            }
+            };
 
             ew.getMapping().from(config.testIndex)
                 .then(validateMappingKeys)
@@ -154,7 +174,7 @@ describe('elasticsearch-wrapper', function (){
         });
 
         it('should return the mappings for a specific type', function (done) {
-            function validateMapping (mapping) {
+            var validateMapping = function (mapping) {
                 var keys = Object.keys(mapping),
                     expected = ['body', 'title', 'user'],
                     i;
@@ -165,7 +185,7 @@ describe('elasticsearch-wrapper', function (){
                     // is there a better way to do this?
                     assert.notStrictEqual(keys.indexOf(expected[i]), -1);
                 }
-            }
+            };
 
             ew.getMapping().ofType('example').from(config.testIndex)
                 .then(validateMapping)
@@ -173,11 +193,11 @@ describe('elasticsearch-wrapper', function (){
         });
     });
 
-    describe('#getAlias()', function() {
+    describe('#getAlias()', function () {
         it('should return false if the alias doesn\'t exist', function (done) {
-            function validateIndexName (indexName) {
+            var validateIndexName = function (indexName) {
                 assert.strictEqual(indexName, false);
-            }
+            };
 
             ew.getAlias('does_not_exist')
                 .then(validateIndexName)
@@ -185,13 +205,13 @@ describe('elasticsearch-wrapper', function (){
         });
 
         it('should return the index name the alias points to', function (done) {
-            function getAlias () {
-                return ew.getAlias('test_get_alias');
-            }
+            var getAlias = function () {
+                    return ew.getAlias('test_get_alias');
+                },
 
-            function validateIndexName (indexName) {
-                assert.equal(indexName, config.testIndex);
-            }
+                validateIndexName = function (indexName) {
+                    assert.equal(indexName, config.testIndex);
+                };
 
             ew.createAlias('test_get_alias').to(config.testIndex)
                 .then(getAlias)
@@ -200,4 +220,31 @@ describe('elasticsearch-wrapper', function (){
         });
     });
 
+    describe('#getAll()', function () {
+        it('should have access to the client search function for stubbing', function () {
+            var client = ew.getClient();
+
+            expect(client.search).to.be.a.function;
+        });
+
+        it('should proxy the client.search function', function () {
+            var client = ew.getClient(),
+                testParams = {
+                    type: 'things',
+                    index: 'anIndex'
+                },
+                resultParams = makeParams(testParams);
+
+            expect(client.search).to.be.a.function;
+
+            sinon.stub(client, 'search');
+
+            ew.getAll(testParams.type).from(testParams.index);
+
+            expect(client.search).to.have.been.calledOnce
+                .and.to.have.been.calledWith(resultParams);
+
+            client.search.restore();
+        });
+    });
 });

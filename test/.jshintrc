@@ -11,22 +11,19 @@
     "strict"       : true,
     "maxdepth"     : 4,
     "maxcomplexity": 10,
+    "expr"         : true,
 
     "browser": false,
     "node": true,
 
     "globals": {
-        "process": true,
-        "setTimeout": true,
-        "require": true,
-        "console": true,
-        "module": true,
-        "GLOBAL": true,
+        "expect": true,
+        "sinon": true,
         "describe": true,
         "before": true,
+        "beforeEach": true,
         "after": true,
-        "it": true,
-        "clientSockets": true,
-        "__dirname": true
+        "afterEach": true,
+        "it": true
     }
 }

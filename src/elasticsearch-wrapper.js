@@ -430,8 +430,7 @@ exports.getAll = function (type) {
         },
 
         /**
-         * @param String _sort A comma-separated list of <field>:<direction>
-         *                      pairs
+         * @param {String} _sort _sort A comma-separated list of <field>:<direction> pairs
          * @TODO: validate _sort
          */
         sortBy: function (_sort) {
@@ -567,7 +566,7 @@ exports.put = function (data) {
  * // 'ofType' param is the type to delete.
  * // 'from' param is the string name of the index to delete from.
  *
- * @param  {string} typeName The name of the type to delete.
+ * @param  {string} id The id of the document to delete.
  * @return {object}
  */
 exports.deleteById = function (id) {
@@ -579,7 +578,7 @@ exports.deleteById = function (id) {
             return this;
         },
 
-         from: function (indexName) {
+        from: function (indexName) {
             var defer = q.defer();
 
             client.delete({
@@ -615,7 +614,7 @@ exports.deleteByQuery = function (query) {
             return this;
         },
 
-         from: function (indexName) {
+        from: function (indexName) {
             var defer = q.defer();
 
             client.deleteByQuery({
@@ -693,7 +692,7 @@ exports.getMapping = function () {
 
         from: function (indexName) {
             var defer = q.defer(),
-                params = { index: indexName };
+                params = {index: indexName};
 
             if (type) {
                 params.type = type;
