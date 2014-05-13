@@ -6,15 +6,20 @@ module.exports = function (grunt) {
         pkg: grunt.file.readJSON('package.json'),
 
         clean: {
-            coverage: {
-                src: ['dist', 'coverage/test', 'coverage/report.html']
+            all: {
+                src: ['dist', '.tmp', 'coverage/index.html']
+            },
+            tmp: {
+                src: ['.tmp']
             }
         },
 
         copy: {
+            // Copy source files to tmp directory.
+            // These will be instrumented in the blanket task.
             coverage: {
                 src: ['src/**/*.js'],
-                dest: 'coverage/test/'
+                dest: '.tmp/test/'
             },
             dist: {
                 src: ['src/**'],
@@ -51,7 +56,7 @@ module.exports = function (grunt) {
         blanket: {
             coverage: {
                 src: ['src/'],
-                dest: 'coverage/src/'
+                dest: '.tmp/src/'
             }
         },
 
@@ -62,8 +67,7 @@ module.exports = function (grunt) {
                     timeout: 3000,
                     ignoreLeaks: false,
                     ui: 'bdd',
-                    reporter: 'nyan',
-                    require: 'coverage/blanket'
+                    reporter: 'nyan'
                 },
 
                 src: ['test/spechelper.js', 'test/test.js']
@@ -72,10 +76,10 @@ module.exports = function (grunt) {
             coverage: {
                 options: {
                     reporter: 'html-cov',
-                    // quiet: true,
-                    captureFile: 'coverage/report.html'
+                    quiet: true,
+                    captureFile: 'coverage/index.html'
                 },
-                src: ['coverage/test/**/*.js']
+                src: ['.tmp/test/**/*.js']
             }
         }
     });
@@ -88,9 +92,11 @@ module.exports = function (grunt) {
     grunt.loadNpmTasks('grunt-mocha-test');
     grunt.loadNpmTasks('grunt-blanket');
 
-    grunt.registerTask('test', ['jshint', 'jscs', 'mochaTest']);
+    grunt.registerTask('coverage', ['copy:coverage', 'mochaTest:coverage']);
 
-    grunt.registerTask('build', ['clean', 'copy:coverage', 'test', 'copy:dist']);
+    grunt.registerTask('test', ['jshint', 'jscs', 'mochaTest:test']);
+
+    grunt.registerTask('build', ['clean:all', 'test', 'coverage', 'copy:dist', 'clean:tmp']);
 
     grunt.registerTask('default', ['build']);
 };
