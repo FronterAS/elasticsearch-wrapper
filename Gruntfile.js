@@ -114,7 +114,14 @@ module.exports = function (grunt) {
 
     grunt.registerTask('test', ['jshint', 'jscs', 'mochaTest:test']);
 
-    grunt.registerTask('build', ['clean:all', 'test', 'coverage', 'copy:dist', 'clean:tmp']);
+    grunt.registerTask('build', [
+        'clean:all',
+        'test',
+        'coverage',
+        'copy:dist',
+        'clean:tmp',
+        'plato'
+    ]);
 
     grunt.registerTask('default', ['build']);
 };

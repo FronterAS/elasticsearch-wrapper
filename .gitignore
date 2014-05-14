@@ -18,5 +18,3 @@ config.js
 
 coverage/index.html
 .tmp/*
-
-quality/*
