@@ -1,9 +1,11 @@
 'use strict';
 
+require('../spechelper.js');
+
 var assert = require('assert'),
     http = require('http'),
-    ew = require('../src/elasticsearch-wrapper'),
-    config = require('../config.js').Config,
+    ew = require('../../src/elasticsearch-wrapper'),
+    config = require('../../config.js').Config,
     testData = [
         {index: {_type: 'example', _id: 1}},
         {title: 'This is an example', body: 'It has a title and body'},

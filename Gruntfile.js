@@ -18,8 +18,13 @@ module.exports = function (grunt) {
             // Copy source files to tmp directory.
             // These will be instrumented in the blanket task.
             coverage: {
-                src: ['src/**/*.js'],
-                dest: '.tmp/test/'
+                files: [{
+                    src: ['spec/**'],
+                    dest: '.tmp/coverage/'
+                }, {
+                    src: ['config.js'],
+                    dest: '.tmp/coverage/'
+                }]
             },
             dist: {
                 src: ['src/**'],
@@ -33,7 +38,7 @@ module.exports = function (grunt) {
             },
             local: {
                 files: {
-                    'quality/': ['src/**/*.js', 'test/**/*.js']
+                    'quality/': ['src/**/*.js', 'spec/**/*.js']
                 }
             }
         },
@@ -49,16 +54,16 @@ module.exports = function (grunt) {
             },
             test: {
                 files: {
-                    src: ['test/**/*.js']
+                    src: ['spec/test/**/*.js']
                 },
                 options: {
-                    jshintrc: 'test/.jshintrc'
+                    jshintrc: 'spec/.jshintrc'
                 }
             }
         },
 
         jscs: {
-            files: ['Gruntfile.js', 'test/**/*.js', 'src/**/*.js'],
+            files: ['Gruntfile.js', 'spec/test/**/*.js', 'src/**/*.js'],
             options: {
                 config: '.jscsrc'
             }
@@ -67,7 +72,7 @@ module.exports = function (grunt) {
         blanket: {
             coverage: {
                 src: ['src/'],
-                dest: '.tmp/src/'
+                dest: '.tmp/coverage/src/'
             }
         },
 
@@ -81,7 +86,7 @@ module.exports = function (grunt) {
                     reporter: 'nyan'
                 },
 
-                src: ['test/spechelper.js', 'test/test.js']
+                src: ['spec/test/**/*.js']
             },
 
             coverage: {
@@ -90,7 +95,7 @@ module.exports = function (grunt) {
                     quiet: true,
                     captureFile: 'coverage/index.html'
                 },
-                src: ['.tmp/test/**/*.js']
+                src: ['.tmp/coverage/spec/test/**/*.js']
             }
         }
     });
@@ -105,7 +110,7 @@ module.exports = function (grunt) {
 
     grunt.loadNpmTasks('grunt-plato');
 
-    grunt.registerTask('coverage', ['copy:coverage', 'mochaTest:coverage']);
+    grunt.registerTask('coverage', ['copy:coverage', 'blanket', 'mochaTest:coverage']);
 
     grunt.registerTask('test', ['jshint', 'jscs', 'mochaTest:test']);
 
