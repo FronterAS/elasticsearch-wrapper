@@ -36,6 +36,7 @@
     "grunt-jscs-checker": "^0.4.3",
     "grunt-mocha": "^0.4.10",
     "grunt-mocha-test": "^0.10.2",
+    "grunt-plato": "^1.0.0",
     "sinon": "^1.9.1",
     "sinon-chai": "^2.5.0"
   }

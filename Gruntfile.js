@@ -27,6 +27,17 @@ module.exports = function (grunt) {
             }
         },
 
+        plato: {
+            options: {
+                jshint : grunt.file.readJSON('.jshintrc')
+            },
+            local: {
+                files: {
+                    'quality/': ['src/**/*.js', 'test/**/*.js']
+                }
+            }
+        },
+
         jshint: {
             app: {
                 files: {
@@ -91,6 +102,8 @@ module.exports = function (grunt) {
     grunt.loadNpmTasks('grunt-jscs-checker');
     grunt.loadNpmTasks('grunt-mocha-test');
     grunt.loadNpmTasks('grunt-blanket');
+
+    grunt.loadNpmTasks('grunt-plato');
 
     grunt.registerTask('coverage', ['copy:coverage', 'mochaTest:coverage']);
 
