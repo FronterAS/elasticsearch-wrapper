@@ -14,4 +14,4 @@ before_script:
     - sed s/trace/error/ config.js.example > config.js
 
 script:
-    - mocha
+    - grunt
