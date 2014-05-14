@@ -110,6 +110,8 @@ module.exports = function (grunt) {
 
     grunt.loadNpmTasks('grunt-plato');
 
+    grunt.registerTask('code-quality', ['plato']);
+
     grunt.registerTask('coverage', ['copy:coverage', 'blanket', 'mochaTest:coverage']);
 
     grunt.registerTask('test', ['jshint', 'jscs', 'mochaTest:test']);
@@ -119,8 +121,7 @@ module.exports = function (grunt) {
         'test',
         'coverage',
         'copy:dist',
-        'clean:tmp',
-        'plato'
+        'clean:tmp'
     ]);
 
     grunt.registerTask('default', ['build']);

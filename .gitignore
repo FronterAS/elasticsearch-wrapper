@@ -18,3 +18,5 @@ config.js
 
 coverage/index.html
 .tmp/*
+
+code-quality/
