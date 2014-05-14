@@ -125,5 +125,7 @@ module.exports = function (grunt) {
         'clean:tmp'
     ]);
 
+    grunt.registerTask('travis', ['test']);
+
     grunt.registerTask('default', ['build']);
 };
