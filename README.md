@@ -49,14 +49,20 @@ First, duplicate the **test/config.json.example** file and make relevant changes
 cp config.js.example config.js
 ```
 
-Then the tests can be run using [Mocha](http://visionmedia.github.io/mocha/).
-
 ```bash
-mocha
+grunt test
 ```
 
-You can also use [JSHint](http://jshint.com/) to check if the code complies with the standard.
+This will run jshint, mocha and blanket for code coverage.
+
+Jshint can be run separately using
 
 ```bash
-jshint elasticsearch-wrapper.js
+grunt jshint
+```
+
+as can blanketjs coverage generation.
+
+```bash
+grunt coverage
 ```

@@ -27,7 +27,8 @@ module.exports = function (grunt) {
                 }]
             },
             dist: {
-                src: ['src/**'],
+                cwd: 'src',
+                src: '**',
                 dest: 'dist/'
             }
         },
