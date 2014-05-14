@@ -7,7 +7,7 @@ services:
     - elasticsearch
 
 install:
-    - npm install -g mocha
+    - npm install -g grunt-cli
     - npm install
 
 before_script:
