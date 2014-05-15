@@ -1,8 +1,8 @@
 {
   "name": "elasticsearch-wrapper",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "A wrapper around the elasticsearch module to provide promise based workflow and a readable syntax.",
-  "main": "elasticsearch-wrapper.js",
+  "main": "dist/elasticsearch-wrapper.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -23,5 +23,21 @@
     "q": "~1.0.0",
     "lodash": "~2.4.1",
     "elasticsearch": "~1.3.0"
+  },
+  "devDependencies": {
+    "blanket": "^1.1.6",
+    "chai": "^1.9.1",
+    "chai-as-promised": "^4.1.1",
+    "grunt": "^0.4.4",
+    "grunt-blanket": "0.0.8",
+    "grunt-contrib-clean": "^0.5.0",
+    "grunt-contrib-copy": "^0.5.0",
+    "grunt-contrib-jshint": "^0.10.0",
+    "grunt-jscs-checker": "^0.4.3",
+    "grunt-mocha": "^0.4.10",
+    "grunt-mocha-test": "^0.10.2",
+    "grunt-plato": "^1.0.0",
+    "sinon": "^1.9.1",
+    "sinon-chai": "^2.5.0"
   }
 }

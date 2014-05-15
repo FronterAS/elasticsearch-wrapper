@@ -7,11 +7,11 @@ services:
     - elasticsearch
 
 install:
-    - npm install -g mocha
+    - npm install -g grunt-cli
     - npm install
 
 before_script:
     - sed s/trace/error/ config.js.example > config.js
 
 script:
-    - mocha
+    - grunt travis

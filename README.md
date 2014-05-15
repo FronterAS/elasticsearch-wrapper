@@ -8,7 +8,7 @@ A wrapper around the elasticsearch module to provide promise based workflow and 
 Add the dependency to your package.json
 ```json
 "dependencies": {
-  "elasticsearch-wrapper": "git://github.com/FronterAS/elasticsearch-wrapper.git#master"
+  "elasticsearch-wrapper": "git://github.com/FronterAS/elasticsearch-wrapper.git#tag"
 }
 ```
 
@@ -43,20 +43,36 @@ DB.query(query).ofType('article').filterBy(filter).from('my_index')
 
 ## Testing
 
+```bash
+# Install the grunt-cli global node module
+sudo npm install -g grunt-cli
+
+# Install all the development dependencies
+npm install
+
+```
+
+
 First, duplicate the **test/config.json.example** file and make relevant changes that apply to your system.
 
 ```bash
 cp config.js.example config.js
 ```
 
-Then the tests can be run using [Mocha](http://visionmedia.github.io/mocha/).
-
 ```bash
-mocha
+grunt test
 ```
 
-You can also use [JSHint](http://jshint.com/) to check if the code complies with the standard.
+This will run jshint, mocha and blanket for code coverage.
+
+Jshint can be run separately using
 
 ```bash
-jshint elasticsearch-wrapper.js
+grunt jshint
+```
+
+as can blanketjs coverage generation.
+
+```bash
+grunt coverage
 ```
