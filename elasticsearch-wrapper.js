@@ -26,7 +26,12 @@ var q = require('q'),
 
     adaptResult = function (result) {
         var _result = result.fields || result._source;
-        _result.id = result.id || result._id;
+
+        if (_result) {
+            _result.id = result.id || result._id;
+        } else {
+            _result = result; // assumes the result wasn't a document object
+        }
 
         return _result;
     },
