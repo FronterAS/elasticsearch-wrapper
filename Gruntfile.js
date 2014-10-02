@@ -7,7 +7,7 @@ module.exports = function (grunt) {
 
         clean: {
             all: {
-                src: ['dist', '.tmp', 'coverage/index.html']
+                src: ['.tmp', 'coverage/index.html']
             },
             tmp: {
                 src: ['.tmp']
@@ -25,11 +25,6 @@ module.exports = function (grunt) {
                     src: ['config.js'],
                     dest: '.tmp/coverage/'
                 }]
-            },
-            dist: {
-                cwd: 'src',
-                src: '**',
-                dest: 'dist/'
             }
         },
 
@@ -121,7 +116,6 @@ module.exports = function (grunt) {
         'clean:all',
         'test',
         'coverage',
-        'copy:dist',
         'clean:tmp'
     ]);
 

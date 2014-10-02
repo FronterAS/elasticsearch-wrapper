@@ -26,7 +26,12 @@ var q = require('q'),
 
     adaptResult = function (result) {
         var _result = result.fields || result._source;
-        _result.id = result.id || result._id;
+
+        if (_result) {
+            _result.id = result.id || result._id;
+        } else {
+            _result = result; // assumes the result wasn't a document object
+        }
 
         return _result;
     },
@@ -430,7 +435,7 @@ exports.getAll = function (type) {
         },
 
         /**
-         * @param {String} _sort _sort A comma-separated list of <field>:<direction> pairs
+         * @param {string} _sort A comma-separated list of <field>:<direction> pairs
          * @TODO: validate _sort
          */
         sortBy: function (_sort) {
@@ -560,13 +565,13 @@ exports.put = function (data) {
 };
 
 /**
- * Delete type from index.
+ * Delete document from index.
  * @example
  * db.delete(id).ofType(type).from('myIndex');
  * // 'ofType' param is the type to delete.
  * // 'from' param is the string name of the index to delete from.
  *
- * @param  {string} id The id of the document to delete.
+ * @param  {string} id ID of the document
  * @return {object}
  */
 exports.deleteById = function (id) {
