@@ -909,6 +909,52 @@ exports.createTemplate = function (name, template) {
     return defer.promise;
 };
 
+/**
+ * Delete a template.
+ *
+ * @param  {string} name Name of the template to delete
+ * @return {object} Promise
+ */
+exports.deleteTemplate = function (name) {
+    var defer = q.defer();
+
+    client.indices.deleteTemplate({
+        name: name
+    }, function (error, response) {
+        if (error) {
+            defer.reject(adaptError(error));
+            return;
+        }
+
+        defer.resolve(response);
+    });
+
+    return defer.promise;
+};
+
+/**
+ * Get the template data.
+ *
+ * @param  {string} name Name of the template to get
+ * @return {object} Promise
+ */
+exports.getTemplate = function (name) {
+    var defer = q.defer();
+
+    client.indices.getTemplate({
+        name: name
+    }, function (error, response) {
+        if (error) {
+            defer.reject(adaptError(error));
+            return;
+        }
+
+        defer.resolve(response);
+    });
+
+    return defer.promise;
+};
+
 // API
 exports.get = get;
 exports.getMany = getMany;
