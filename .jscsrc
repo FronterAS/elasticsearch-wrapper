@@ -1,4 +1,8 @@
 {
+    "excludeFiles": [
+        "static/planning-tool/app/common/utils/mobile-detect.js"
+    ],
+
     "requireCurlyBraces": [
         "if",
         "else",
@@ -6,9 +10,7 @@
         "while",
         "do",
         "try",
-        "catch",
-        "case",
-        "default"
+        "catch"
     ],
 
     "requireSpaceAfterKeywords": [
@@ -48,43 +50,6 @@
         "-",
         "/",
         "*",
-        "=",
-        "==",
-        "===",
-        "!=",
-        "!==",
-        ">",
-        ">=",
-        "<",
-        "<="
-    ],
-
-    "disallowLeftStickedOperators": [
-        "?",
-        "+",
-        "-",
-        "/",
-        "*",
-        "=",
-        "==",
-        "===",
-        "!=",
-        "!==",
-        ">",
-        ">=",
-        "<",
-        "<="
-    ],
-
-    "requireLeftStickedOperators": [","],
-    "requireRightStickedOperators": ["!"],
-
-    "disallowRightStickedOperators": [
-        "?",
-        "+",
-        "/",
-        "*",
-        ":",
         "=",
         "==",
         "===",
