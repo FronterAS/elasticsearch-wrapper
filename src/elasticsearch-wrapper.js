@@ -724,6 +724,50 @@ exports.getMapping = function () {
 };
 
 /**
+ * Get the mapping of an index.
+ *
+ * @return {object} Object containing methods to filter or perform the request
+ */
+exports.putMapping = function (mapping) {
+    var type;
+
+    return {
+        ofType: function (_type) {
+            type = _type;
+            return this;
+        },
+
+        into: function (indexName) {
+            var defer = q.defer(),
+                params = {index: indexName};
+
+            if (type) {
+                params.type = type;
+            }
+
+            params.body = mapping;
+
+            client.indices.putMapping(params, function (error, response) {
+                if (error) {
+                    defer.reject(adaptError(error));
+                    return;
+                }
+
+                response = response[indexName].mappings;
+
+                if (type) {
+                    response = response[type].properties;
+                }
+
+                defer.resolve(response);
+            });
+
+            return defer.promise;
+        }
+    };
+};
+
+/**
  * Get an alias, providing the index the alias points to (or false if the alias doesn't exist).
  *
  * @param {string} aliasName Name of the alias to get
