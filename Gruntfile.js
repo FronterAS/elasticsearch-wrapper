@@ -19,7 +19,7 @@ module.exports = function (grunt) {
             // These will be instrumented in the blanket task.
             coverage: {
                 files: [{
-                    src: ['spec/**'],
+                    src: ['spec/**/*.js'],
                     dest: '.tmp/coverage/'
                 }, {
                     src: ['config.js'],
