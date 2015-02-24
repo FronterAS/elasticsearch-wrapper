@@ -917,9 +917,12 @@ exports.config = function (_config) {
     config = _config;
 
     clientOptions = {
-        host: config.db.url,
-        maxKeepAliveRequests: 1
+        host: config.db.url || 'http://localhost:9200'
     };
+
+    if (config.db.keepAlive !== undefined) {
+        clientOptions.keepAlive = config.db.keepAlive;
+    }
 
     if (config.db.logging) {
         clientOptions.log = config.db.logging;

@@ -38,7 +38,7 @@
     "grunt-plato": "^1.2.1",
     "grunt-mocha-istanbul": "^2.3.1",
     "sinon": "^1.12.2",
-    "sinon-chai": "^2.7.0"
-    "istanbul": "^0.3.6",
+    "sinon-chai": "^2.7.0",
+    "istanbul": "^0.3.6"
   }
 }
