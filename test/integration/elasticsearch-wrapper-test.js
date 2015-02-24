@@ -2,11 +2,12 @@
 
 require('../spechelper.js');
 
-var assert = require('assert'),
-    http = require('http'),
-    ew = require('../../src/elasticsearch-wrapper'),
-    config = require('../../config.js').Config,
-    testData = [
+var assert      = require('assert'),
+    http        = require('http'),
+    ew          = require('../../src/elasticsearch-wrapper'),
+    config      = require('../../config.js').Config,
+
+    testData    = [
         {index: {_type: 'example', _id: 1}},
         {title: 'This is an example', body: 'It has a title and body'},
         {index: {_type: 'example', _id: 2}},
@@ -31,13 +32,18 @@ describe('elasticsearch-wrapper', function () {
     // Create test index and setup wrapper
     before(function (done) {
         var i,
+
             host = config.db.url.match(/^.*\/([^:]+?):(\d+).*?$/),
+
             options = {
-                hostname: host[1],
-                port: host[2],
-                path: '/' + config.testIndex + '/_bulk',
-                method: 'PUT'
+                hostname    : host[1],
+                port        : host[2],
+                path        : '/' + config.testIndex + '/_bulk',
+                method      : 'PUT'
             },
+
+            // using a simple 'curl' request to populate test data.
+            // @todo, this should be done with the actual wrapper not like this.
             request = http.request(options, function (response) {
                 response.on('data', function () {
                     ew.config(config);
@@ -65,6 +71,7 @@ describe('elasticsearch-wrapper', function () {
                 path: '/' + config.testIndex,
                 method: 'DELETE'
             },
+
             request = http.request(options, function () {
                 done();
             });
@@ -72,9 +79,56 @@ describe('elasticsearch-wrapper', function () {
         request.end();
     });
 
-    describe.only('putMapping', function () {
-        it('should update the index mapping', function (done) {
+    describe('putMapping', function () {
+        var mapping = {
+            'testMappingType': {
+                'properties': {
+                    'testNestedField': {
+                        'properties': {
+                            'uuid': {
+                                'type': 'string',
+                                'index': 'not_analyzed'
+                            },
+                            'testIntegerField': {
+                                'type': 'integer'
+                            }
+                        }
+                    },
+                    'testLongField': {
+                        'type': 'long'
+                    },
+                    'testBooleanField': {
+                        'type': 'boolean'
+                    },
+                    'testFloatField': {
+                        'type': 'float'
+                    },
+                    'testDoubleField': {
+                        'type': 'double'
+                    }
+                }
+            }
+        };
 
+        it('should update the index mapping', function (done) {
+            var putMapping,
+                result;
+
+            // @todo, these are unit tests and should be moved.
+            expect(ew.putMapping).to.be.a('function');
+
+            putMapping = ew.putMapping(mapping);
+
+            expect(putMapping).to.be.an('object')
+                .and.to.have.a.property('ofType')
+                .that.is.a('function');
+
+            expect(putMapping).to.have.a.property('into')
+                .that.is.a('function');
+
+            result = putMapping.ofType('testMappingType').into('test');
+
+            expect(result).to.become({acknowledged: true}).notify(done);
         });
     });
 

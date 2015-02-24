@@ -724,8 +724,9 @@ exports.getMapping = function () {
 };
 
 /**
- * Get the mapping of an index.
+ * Add a type mapping to an index.
  *
+ * @param {object} mapping
  * @return {object} Object containing methods to filter or perform the request
  */
 exports.putMapping = function (mapping) {
@@ -739,10 +740,18 @@ exports.putMapping = function (mapping) {
 
         into: function (indexName) {
             var defer = q.defer(),
-                params = {index: indexName};
 
-            if (type) {
-                params.type = type;
+                params = {
+                    index: indexName,
+                    type: type
+                };
+
+            if (!indexName) {
+                throw new Error('indexName must be supplied to put mapping');
+            }
+
+            if (!type) {
+                throw new Error('type must be supplied to put mapping');
             }
 
             params.body = mapping;
@@ -753,12 +762,7 @@ exports.putMapping = function (mapping) {
                     return;
                 }
 
-                response = response[indexName].mappings;
-
-                if (type) {
-                    response = response[type].properties;
-                }
-
+                // client returns {acknowledged: true} on success
                 defer.resolve(response);
             });
 

@@ -7,7 +7,7 @@ module.exports = function (grunt) {
 
         clean: {
             all: {
-                src: ['.tmp', 'coverage/**/*']
+                src: ['.tmp', 'metrics/**/*']
             },
             tmp: {
                 src: ['.tmp']
@@ -20,7 +20,7 @@ module.exports = function (grunt) {
             },
             local: {
                 files: {
-                    'quality/': ['src/**/*.js', 'spec/**/*.js']
+                    'quality/': ['src/**/*.js', 'test/**/*.js']
                 }
             }
         },
@@ -45,7 +45,7 @@ module.exports = function (grunt) {
 
         'mocha_istanbul': {
             integration: {
-                src: 'test/integration/**/*.js',
+                src: ['test/integration/**/*.js', '!config.js'],
                 options: {
                     slow: 50,
                     timeout: 20000,
@@ -59,26 +59,21 @@ module.exports = function (grunt) {
     grunt.loadNpmTasks('grunt-contrib-jshint');
     grunt.loadNpmTasks('grunt-contrib-clean');
     grunt.loadNpmTasks('grunt-contrib-copy');
-
     grunt.loadNpmTasks('grunt-jscs-checker');
     grunt.loadNpmTasks('grunt-mocha-istanbul');
-
     grunt.loadNpmTasks('grunt-plato');
 
-    grunt.registerTask('code-quality', ['plato']);
-
-    grunt.registerTask('coverage', ['mocha_istanbul']);
-
-    grunt.registerTask('test', ['jshint', 'jscs', 'coverage']);
+    grunt.registerTask('metrics', ['plato']);
+    grunt.registerTask('lint', ['jshint', 'jscs']);
+    grunt.registerTask('test', ['mocha_istanbul']);
 
     grunt.registerTask('build', [
         'clean:all',
+        'lint',
         'test',
-        'coverage',
         'clean:tmp'
     ]);
 
-    grunt.registerTask('travis', ['test']);
-
+    grunt.registerTask('travis', ['lint', 'test']);
     grunt.registerTask('default', ['build']);
 };
