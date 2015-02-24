@@ -16,7 +16,5 @@ node_modules
 
 config.js
 
-coverage/index.html
+metrics/*
 .tmp/*
-
-quality/

@@ -72,7 +72,13 @@ describe('elasticsearch-wrapper', function () {
         request.end();
     });
 
-    describe('#bulk', function () {
+    describe.only('putMapping', function () {
+        it('should update the index mapping', function (done) {
+
+        });
+    });
+
+    describe('bulk', function () {
         it('should create documents using bulk actions', function (done) {
             var actions = [
                     {index: {_index: 'test', _type: 'example', _id: 1}},
@@ -113,7 +119,7 @@ describe('elasticsearch-wrapper', function () {
         });
     });
 
-    describe('#createAlias', function () {
+    describe('createAlias', function () {
         it('should create an alias to an index', function (done) {
             var getAlias = function (response) {
                     assert.equal(response.acknowledged, true);
@@ -131,7 +137,7 @@ describe('elasticsearch-wrapper', function () {
         });
     });
 
-    describe('#deleteAlias', function () {
+    describe('deleteAlias', function () {
         it('should delete an alias on an index', function (done) {
             var deleteAlias = function (response) {
                     assert.equal(response.acknowledged, true);
@@ -162,7 +168,7 @@ describe('elasticsearch-wrapper', function () {
         });
     });
 
-    describe('#getMapping()', function () {
+    describe('getMapping()', function () {
         it('should return the mappings for all types', function (done) {
             var validateMappingKeys = function (mapping) {
                 var keys = Object.keys(mapping);
@@ -195,7 +201,7 @@ describe('elasticsearch-wrapper', function () {
         });
     });
 
-    describe('#getAlias()', function () {
+    describe('getAlias()', function () {
         it('should return false if the alias doesn\'t exist', function (done) {
             var validateIndexName = function (indexName) {
                 assert.strictEqual(indexName, false);
@@ -222,7 +228,7 @@ describe('elasticsearch-wrapper', function () {
         });
     });
 
-    describe('#getAll()', function () {
+    describe('getAll()', function () {
         it('should have access to the client search function for stubbing', function () {
             var client = ew.getClient();
 

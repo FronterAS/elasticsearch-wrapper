@@ -7,24 +7,10 @@ module.exports = function (grunt) {
 
         clean: {
             all: {
-                src: ['.tmp', 'coverage/index.html']
+                src: ['.tmp', 'coverage/**/*']
             },
             tmp: {
                 src: ['.tmp']
-            }
-        },
-
-        copy: {
-            // Copy source files to tmp directory.
-            // These will be instrumented in the blanket task.
-            coverage: {
-                files: [{
-                    src: ['spec/**/*.js'],
-                    dest: '.tmp/coverage/'
-                }, {
-                    src: ['config.js'],
-                    dest: '.tmp/coverage/'
-                }]
             }
         },
 
@@ -42,56 +28,30 @@ module.exports = function (grunt) {
         jshint: {
             app: {
                 files: {
-                    src: ['Gruntfile.js', 'src/**/*.js']
+                    src: ['Gruntfile.js', 'src/**/*.js', 'test/integration/**/*.js']
                 },
                 options: {
                     jshintrc: '.jshintrc'
-                }
-            },
-            test: {
-                files: {
-                    src: ['spec/test/**/*.js']
-                },
-                options: {
-                    jshintrc: 'spec/.jshintrc'
                 }
             }
         },
 
         jscs: {
-            files: ['Gruntfile.js', 'spec/test/**/*.js', 'src/**/*.js'],
+            files: ['Gruntfile.js', 'test/integration/**/*.js', 'src/**/*.js'],
             options: {
                 config: '.jscsrc'
             }
         },
 
-        blanket: {
-            coverage: {
-                src: ['src/'],
-                dest: '.tmp/coverage/src/'
-            }
-        },
-
-        mochaTest: {
-            test: {
+        'mocha_istanbul': {
+            integration: {
+                src: 'test/integration/**/*.js',
                 options: {
-                    globals: ['expect', 'sinon'],
-                    timeout: 3000,
-                    ignoreLeaks: false,
-                    ui: 'bdd',
-                    reporter: 'nyan'
-                },
-
-                src: ['spec/test/**/*.js']
-            },
-
-            coverage: {
-                options: {
-                    reporter: 'html-cov',
-                    quiet: true,
-                    captureFile: 'coverage/index.html'
-                },
-                src: ['.tmp/coverage/spec/test/**/*.js']
+                    slow: 50,
+                    timeout: 20000,
+                    root: './',
+                    coverageFolder: './metrics/coverage-integration'
+                }
             }
         }
     });
@@ -101,16 +61,15 @@ module.exports = function (grunt) {
     grunt.loadNpmTasks('grunt-contrib-copy');
 
     grunt.loadNpmTasks('grunt-jscs-checker');
-    grunt.loadNpmTasks('grunt-mocha-test');
-    grunt.loadNpmTasks('grunt-blanket');
+    grunt.loadNpmTasks('grunt-mocha-istanbul');
 
     grunt.loadNpmTasks('grunt-plato');
 
     grunt.registerTask('code-quality', ['plato']);
 
-    grunt.registerTask('coverage', ['copy:coverage', 'blanket', 'mochaTest:coverage']);
+    grunt.registerTask('coverage', ['mocha_istanbul']);
 
-    grunt.registerTask('test', ['jshint', 'jscs', 'mochaTest:test']);
+    grunt.registerTask('test', ['jshint', 'jscs', 'coverage']);
 
     grunt.registerTask('build', [
         'clean:all',
