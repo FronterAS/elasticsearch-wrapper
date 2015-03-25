@@ -1,6 +1,6 @@
 {
   "name": "elasticsearch-wrapper",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "A wrapper around the elasticsearch module to provide promise based workflow and a readable syntax.",
   "main": "src/elasticsearch-wrapper.js",
   "scripts": {
