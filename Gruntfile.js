@@ -2,15 +2,15 @@
 
 module.exports = function (grunt) {
 
+    require('load-grunt-tasks')(grunt);
+    require('time-grunt')(grunt);
+
     grunt.initConfig({
         pkg: grunt.file.readJSON('package.json'),
 
         clean: {
             all: {
                 src: ['.tmp', 'metrics/**/*']
-            },
-            tmp: {
-                src: ['.tmp']
             }
         },
 
@@ -22,6 +22,24 @@ module.exports = function (grunt) {
                 files: {
                     'quality/': ['src/**/*.js', 'test/**/*.js']
                 }
+            }
+        },
+
+        bump: {
+            options: {
+                files: ['package.json'],
+                commit: true,
+                commitMessage: 'Release v%VERSION%',
+                // commitFiles: [''],
+                createTag: true,
+                tagName: 'v%VERSION%',
+                tagMessage: 'Version %VERSION%',
+                push: false,
+                pushTo: 'origin',
+                gitDescribeOptions: '--tags --always --abbrev=1 --dirty=-d',
+                globalReplace: false,
+                prereleaseName: false,
+                regExp: false
             }
         },
 
@@ -56,13 +74,6 @@ module.exports = function (grunt) {
         }
     });
 
-    grunt.loadNpmTasks('grunt-contrib-jshint');
-    grunt.loadNpmTasks('grunt-contrib-clean');
-    grunt.loadNpmTasks('grunt-contrib-copy');
-    grunt.loadNpmTasks('grunt-jscs-checker');
-    grunt.loadNpmTasks('grunt-mocha-istanbul');
-    grunt.loadNpmTasks('grunt-plato');
-
     grunt.registerTask('metrics', ['plato']);
     grunt.registerTask('lint', ['jshint', 'jscs']);
     grunt.registerTask('test', ['mocha_istanbul']);
@@ -70,8 +81,7 @@ module.exports = function (grunt) {
     grunt.registerTask('build', [
         'clean:all',
         'lint',
-        'test',
-        'clean:tmp'
+        'test'
     ]);
 
     grunt.registerTask('travis', ['lint', 'test']);
