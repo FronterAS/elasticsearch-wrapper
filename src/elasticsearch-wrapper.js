@@ -1027,11 +1027,11 @@ exports.count = function (type) {
     var query;
 
     return {
-        that: function () {
-            return this;
-        },
+        thatMatch: function (_query) {
+            if (_query.filter) {
+                throw new TypeError('Use a filtered query with count, not a top level filter');
+            }
 
-        match: function (_query) {
             query = _query;
             return this;
         },
@@ -1055,19 +1055,13 @@ exports.count = function (type) {
 
             searchParams.body = extraParams;
 
-            client.count(searchParams, function (error, results) {
-                var response;
-
-                console.log(error || results);
-
+            client.count(searchParams, function (error, response) {
                 if (error) {
                     defer.reject(adaptError(error));
                     return;
                 }
 
-                response = adaptResults(results.hits.hits);
-                response.total = results.hits.total;
-                defer.resolve(response);
+                defer.resolve(response.count);
             });
 
             return defer.promise;
