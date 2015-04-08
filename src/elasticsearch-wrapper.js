@@ -1,7 +1,7 @@
 'use strict';
 
 var q = require('q'),
-    _ = require('lodash'),
+    unique = require('array-unique'),
 
     config,
 
@@ -29,6 +29,7 @@ var q = require('q'),
 
         if (_result) {
             _result.id = result.id || result._id;
+
         } else {
             _result = result; // assumes the result wasn't a document object
         }
@@ -37,18 +38,16 @@ var q = require('q'),
     },
 
     adaptResults = function (results) {
-        results = _.map(results, function (result) {
-            return adaptResult(result);
-        });
-
-        return {'results': results};
+        return {
+            'results': results.map(adaptResult)
+        };
     },
 
     emptyResult = function () {
-        return q({
+        return {
             'results': [],
             'total': 0
-        });
+        };
     },
 
     /**
@@ -60,7 +59,7 @@ var q = require('q'),
     getMany = function (ids) {
         var typeName;
 
-        if (!_.isArray(ids)) {
+        if (!Array.isArray(ids)) {
             ids = [ids];
         }
 
@@ -83,7 +82,7 @@ var q = require('q'),
 
                 // Ensure that array has only unique ids.
                 // The second boolean parameter is 'isSorted', and runs much faster.
-                ids = _.uniq(ids, true);
+                ids = unique(ids, true);
 
                 client.mget({
                     'index': indexName,
@@ -118,7 +117,7 @@ var q = require('q'),
     get = function (id) {
         var typeName;
 
-        if (_.isArray(id)) {
+        if (Array.isArray(id)) {
             return getMany(id);
         }
 
@@ -159,7 +158,7 @@ var q = require('q'),
 exports.post = function (data) {
     var typeName;
 
-    if (!_.isArray(data)) {
+    if (!Array.isArray(data)) {
         data = [data];
     }
 
@@ -522,9 +521,9 @@ exports.put = function (data) {
                 updateExistingData = function (existingData) {
                     data.updatedAt = (new Date()).toISOString();
 
-                    _.forEach(existingData._source, function (value, key) {
+                    Object.keys(existingData._source).forEach(function (key) {
                         if (data[key] === undefined) {
-                            data[key] = value;
+                            data[key] = existingData._source[key];
                         }
                     });
 
@@ -1016,4 +1015,62 @@ exports.getMany = getMany;
  */
 exports.getClient = function () {
     return client;
+};
+
+/**
+ * Count only works with a query. Use filtered query to use with filters.
+ *
+ * @example
+ * DB.count(type).that.match(query).from(myIndex);
+ */
+exports.count = function (type) {
+    var query;
+
+    return {
+        that: function () {
+            return this;
+        },
+
+        match: function (_query) {
+            query = _query;
+            return this;
+        },
+
+        from: function (indexName) {
+            var defer        = q.defer(),
+                searchParams = {},
+                extraParams  = {};
+
+            if (indexName) {
+                searchParams.index = indexName;
+            }
+
+            if (type) {
+                searchParams.q = '_type:' + type
+            }
+
+            if (query) {
+                extraParams.query = query;
+            }
+
+            searchParams.body = extraParams;
+
+            client.count(searchParams, function (error, results) {
+                var response;
+
+                console.log(error || results);
+
+                if (error) {
+                    defer.reject(adaptError(error));
+                    return;
+                }
+
+                response = adaptResults(results.hits.hits);
+                response.total = results.hits.total;
+                defer.resolve(response);
+            });
+
+            return defer.promise;
+        }
+    };
 };
