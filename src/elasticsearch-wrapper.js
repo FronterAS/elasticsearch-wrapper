@@ -1046,7 +1046,7 @@ exports.count = function (type) {
             }
 
             if (type) {
-                searchParams.q = '_type:' + type
+                searchParams.q = '_type:' + type;
             }
 
             if (query) {
