@@ -82,7 +82,7 @@ var q = require('q'),
                     },
 
                     runMultipleGet = function (resolve, reject) {
-                        if (!ids) {
+                        if (!ids || ids.length === 0) {
                             resolve(emptyResult());
 
                         } else if (!Array.isArray(ids)) {
@@ -92,6 +92,7 @@ var q = require('q'),
                         // Ensure that array has only unique ids.
                         // The second boolean parameter is 'isSorted', and runs much faster.
                         ids = unique(ids, true);
+
 
                         client.mget(params, function (error, response) {
                             var results;
