@@ -1,82 +1,89 @@
 'use strict';
 
-require('../spechelper.js');
+/**
+ * It has become clear that this must be an integration suite, and not a unit test suite.
+ * Therefore, do not stub or mock the elasticsearch.js client, it will not show certain
+ * breaking changes nor check the actual result is the expected one 100% of the time.
+ */
+require('../spec-helper.js');
 
 var assert      = require('assert'),
-    http        = require('http'),
-    ew          = require('../../src/elasticsearch-wrapper'),
-    config      = require('../../config.js').Config,
+    q           = require('q'),
+    DB          = require('../../src/elasticsearch-wrapper'),
+    config      = require('../../config.json'),
+
+    testIndex   = config.tests.indexName,
+
+    testType    = 'example',
 
     testData    = [
-        {index: {_type: 'example', _id: 1}},
+        {index: {_type: testType, _id: 1, _index: testIndex}},
         {title: 'This is an example', body: 'It has a title and body'},
-        {index: {_type: 'example', _id: 2}},
-        {title: 'Another example', user: 1234},
-        {index: {_type: 'example', _id: 3}},
-        {title: 'Final example', body: 'Broad shoulders and narrow waist', user: 1337}
+        {index: {_type: testType, _id: 2, _index: testIndex}},
+        {title: 'Another example', user: '1234'},
+        {index: {_type: testType, _id: 3, _index: testIndex}},
+        {title: 'Final example', body: 'Broad shoulders and narrow waist', user: '1337'}
     ],
 
-    makeParams = function (overrides) {
-        return {
-            index: overrides.index || 'anIndex',
-            q: '_type:' + (overrides.type || 'things'),
-            from: overrides.from || 0,
-            sort: overrides.sort || '',
-            size: overrides.size || 1000,
-            body: overrides.body || {}
-        };
+    testTemplate = {
+        'template': testIndex,
+        'settings': {
+            'number_of_shards': 1
+        },
+        'mappings': {
+            'example': {
+                'properties': {
+                    'title': {
+                        'type': 'string'
+                    },
+                    'body': {
+                        'type': 'string'
+                    },
+                    'user': {
+                        'type': 'string',
+                        'index': 'not_analyzed'
+                    }
+                }
+            }
+        }
+    },
+
+    wait = function () {
+        return q.delay(1500);
     };
 
 describe('elasticsearch-wrapper', function () {
 
-    // Create test index and setup wrapper
+    // The before actually tests the bulk api.
     before(function (done) {
-        var i,
+        DB.config(config);
 
-            host = config.db.url.match(/^.*\/([^:]+?):(\d+).*?$/),
-
-            options = {
-                hostname    : host[1],
-                port        : host[2],
-                path        : '/' + config.testIndex + '/_bulk',
-                method      : 'PUT'
-            },
-
-            // using a simple 'curl' request to populate test data.
-            // @todo, this should be done with the actual wrapper not like this.
-            request = http.request(options, function (response) {
-                response.on('data', function () {
-                    ew.config(config);
-                    done();
-                });
-            });
-
-        request.on('error', function (e) {
-            throw new Error('HTTP error: ' + e.message);
-        });
-
-        for (i = 0; i < testData.length; i += 1) {
-            request.write(JSON.stringify(testData[i]) + '\n');
-        }
-
-        request.end();
+        DB.createIndex(testIndex)
+            .then(function () {
+                return DB.createTemplate(testIndex, testTemplate);
+            })
+            .then(function () {
+                return DB.bulk(testData);
+            })
+            .then(function (response) {
+                expect(response.errors).to.be.false;
+                expect(response.items).to.have.length(3);
+            })
+            .catch(console.error)
+            .tap(wait)
+            .done(done);
     });
 
-    // Remove test index
+    // The before actually tests the destroyIndex api.
     after(function (done) {
-        var host = config.db.url.match(/^.*\/([^:]+?):(\d+).*?$/),
-            options = {
-                hostname: host[1],
-                port: host[2],
-                path: '/' + config.testIndex,
-                method: 'DELETE'
-            },
-
-            request = http.request(options, function () {
-                done();
-            });
-
-        request.end();
+        DB.destroyIndex(testIndex)
+            .then(function (response) {
+                expect(response).to.be.deep.equal({
+                    'acknowledged': true
+                });
+            })
+            .catch(console.error)
+            .done(done);
     });
 
     describe('putMapping', function () {
@@ -115,9 +122,9 @@ describe('elasticsearch-wrapper', function () {
                 result;
 
             // @todo, these are unit tests and should be moved.
-            expect(ew.putMapping).to.be.a('function');
+            expect(DB.putMapping).to.be.a('function');
 
-            putMapping = ew.putMapping(mapping);
+            putMapping = DB.putMapping(mapping);
 
             expect(putMapping).to.be.an('object')
                 .and.to.have.a.property('ofType')
@@ -132,59 +139,18 @@ describe('elasticsearch-wrapper', function () {
         });
     });
 
-    describe('bulk', function () {
-        it('should create documents using bulk actions', function (done) {
-            var actions = [
-                    {index: {_index: 'test', _type: 'example', _id: 1}},
-                    {title: 'Test', body: 'Hello World'},
-                    {index: {_index: 'test', _type: 'example', _id: 2}},
-                    {title: 'Another Test', body: 'I know a bank where the wild thyme blows'}
-                ],
-
-                getExamples = function  (response) {
-                    assert.equal(response.errors, false);
-                    return ew.get([1, 2]).ofType('example').from('test');
-                },
-
-                validateResults = function (response) {
-                    var expected = {
-                        results: [
-                            {
-                                title: 'Test',
-                                body: 'Hello World',
-                                id: 1
-                            },
-                            {
-                                title: 'Another Test',
-                                body: 'I know a bank where the wild thyme blows',
-                                id: 2
-                            }
-                        ],
-                        total: 2
-                    };
-
-                    assert.deepEqual(response, expected);
-                };
-
-            ew.bulk(actions)
-                .then(getExamples)
-                .then(validateResults)
-                .done(done);
-        });
-    });
-
-    describe('createAlias', function () {
+    describe('createAlias()', function () {
         it('should create an alias to an index', function (done) {
             var getAlias = function (response) {
                     assert.equal(response.acknowledged, true);
-                    return ew.getAlias('test_create_alias');
+                    return DB.getAlias('test_create_alias');
                 },
 
                 validateIndexName = function (indexName) {
-                    assert.equal(indexName, config.testIndex);
+                    assert.equal(indexName, testIndex);
                 };
 
-            ew.createAlias('test_create_alias').to(config.testIndex)
+            DB.createAlias('test_create_alias').for(testIndex)
                 .then(getAlias)
                 .then(validateIndexName)
                 .done(done);
@@ -195,14 +161,14 @@ describe('elasticsearch-wrapper', function () {
         it('should delete an alias on an index', function (done) {
             var deleteAlias = function (response) {
                     assert.equal(response.acknowledged, true);
-                    return ew.deleteAlias('test_create_alias').from(config.testIndex);
+                    return DB.deleteAlias('test_create_alias').from(testIndex);
                 },
 
                 validateResponse = function (response) {
                     assert.equal(response.acknowledged, true);
                 };
 
-            ew.createAlias('test_create_alias').to(config.testIndex)
+            DB.createAlias('test_create_alias').for(testIndex)
                 .then(deleteAlias)
                 .then(validateResponse)
                 .done(done);
@@ -216,7 +182,7 @@ describe('elasticsearch-wrapper', function () {
                 );
             };
 
-            ew.deleteAlias('does_not_exist').from(config.testIndex)
+            DB.deleteAlias('does_not_exist').from(testIndex)
                 .fail(validateErrorMessage)
                 .done(done);
         });
@@ -230,7 +196,7 @@ describe('elasticsearch-wrapper', function () {
                 assert.equal(keys[0], 'example');
             };
 
-            ew.getMapping().from(config.testIndex)
+            DB.getMapping().from(testIndex)
                 .then(validateMappingKeys)
                 .done(done);
         });
@@ -249,64 +215,226 @@ describe('elasticsearch-wrapper', function () {
                 }
             };
 
-            ew.getMapping().ofType('example').from(config.testIndex)
+            DB.getMapping().ofType('example').from(testIndex)
                 .then(validateMapping)
+                .done(done);
+        });
+    });
+
+    describe('checkAliasExists()', function () {
+        it('should return false if the alias doesn\'t exist', function (done) {
+            var validateResponse = function (exists) {
+                assert.strictEqual(exists, false);
+            };
+
+            DB.checkAliasExists('should_not_exist')
+                .then(validateResponse)
+                .done(done);
+        });
+
+        it('should return true if alias exists', function (done) {
+            var checkAlias = function () {
+                    return DB.checkAliasExists('test_check_alias');
+                },
+
+                validateExists = function (exists) {
+                    assert.equal(exists, true);
+                };
+
+            DB.createAlias('test_check_alias').for(testIndex)
+                .then(checkAlias)
+                .then(validateExists)
                 .done(done);
         });
     });
 
     describe('getAlias()', function () {
         it('should return false if the alias doesn\'t exist', function (done) {
-            var validateIndexName = function (indexName) {
-                assert.strictEqual(indexName, false);
+            var validateErrorMessage = function (error) {
+                assert.strictEqual(error.error.message, 'alias [does_not_exist] missing');
             };
 
-            ew.getAlias('does_not_exist')
-                .then(validateIndexName)
+            DB.getAlias('does_not_exist')
+                .catch(validateErrorMessage)
                 .done(done);
         });
 
         it('should return the index name the alias points to', function (done) {
             var getAlias = function () {
-                    return ew.getAlias('test_get_alias');
+                    return DB.getAlias('test_get_alias');
                 },
 
                 validateIndexName = function (indexName) {
-                    assert.equal(indexName, config.testIndex);
+                    assert.equal(indexName, testIndex);
                 };
 
-            ew.createAlias('test_get_alias').to(config.testIndex)
+            DB.createAlias('test_get_alias').for(testIndex)
                 .then(getAlias)
                 .then(validateIndexName)
                 .done(done);
         });
     });
 
-    describe('getAll()', function () {
-        it('should have access to the client search function for stubbing', function () {
-            var client = ew.getClient();
+    describe('get()', function () {
+        it('should get a document by id', function (done) {
+            var expected = testData[1],
 
-            expect(client.search).to.be.a.function;
+                result = DB.get(1).ofType('example').from(testIndex);
+
+            expected.id = '1';
+
+            expect(result).to.become(expected)
+                .notify(done);
         });
 
-        it('should proxy the client.search function', function () {
-            var client = ew.getClient(),
-                testParams = {
-                    type: 'things',
-                    index: 'anIndex'
+        it('should throw a TypeError when type is not supplied', function (done) {
+            var request = DB.get('whatever').from('whoCares?');
+
+            expect(request).to.be.rejectedWith(TypeError)
+                .notify(done);
+        });
+    });
+
+    describe('post()', function () {
+        it('should post a document and return the saved document', function (done) {
+            var expected = {
+                    'title': 'A post success',
+                    'body': 'This is a load of hogwash'
                 },
-                resultParams = makeParams(testParams);
 
-            expect(client.search).to.be.a.function;
+                result = DB.post(expected).ofType('example').into(testIndex);
 
-            sinon.stub(client, 'search');
+            // the id property we just added will not have it's value evaluated here.
+            expect(result).to.eventually.have.all.keys('id', 'body', 'title');
 
-            ew.getAll(testParams.type).from(testParams.index);
+            expect(result).to.eventually.have.property('title', 'A post success');
+            expect(result).to.eventually.have.property('body', 'This is a load of hogwash');
 
-            expect(client.search).to.have.been.calledOnce
-                .and.to.have.been.calledWith(resultParams);
+            expect(result).to.eventually.have.property('id')
+                .that.is.a('string')
+                .notify(done);
+        });
+    });
 
-            client.search.restore();
+    describe('getMany()', function () {
+        it('should return an empty well formed result if no ids are supplied', function (done) {
+            var expected = {
+                    'results': [],
+                    'total': 0
+                },
+
+                result = DB.getMany().from(testIndex);
+
+            expect(result).to.become(expected)
+                .notify(done);
+        });
+
+        it('should return all results for ids supplied', function (done) {
+            var result = DB.getMany([1, 2, 3]).ofType('example').from(testIndex);
+
+            expect(result).to.eventually.have.all.keys('results', 'total');
+
+            expect(result).to.eventually.have.property('total')
+                .that.is.a('number')
+                .that.equals(3);
+
+            expect(result).to.eventually.have.property('results')
+                .that.is.an('array')
+                .with.length(3)
+                .notify(done);
+        });
+    });
+
+    describe('getAll()', function () {
+        it('should retrieve all the examples', function (done) {
+            var result = DB.getAll(testType).from(testIndex);
+
+            expect(result).to.eventually.have.property('results')
+                .that.is.an('array')
+                .with.length(3);
+
+            expect(result).to.eventually.have.all.keys('results', 'total')
+                .notify(done);
+        });
+
+        it('should retrieve all the examples and limit to specified fields with an offset',
+            function (done) {
+                DB.getAll(testType).fields('title').withOffset(1).size(1).from(testIndex)
+                    .tap(function (response) {
+                        expect(response).to.have.all.keys('results', 'total');
+                    })
+                    // Notice that the total is 3...
+                    .tap(function (response) {
+                        expect(response).to.have.property('total')
+                            .that.is.equal(3);
+                    })
+                    // however the length of the results array is 1, same as the size.
+                    .tap(function (response) {
+                        expect(response).to.have.property('results')
+                            .that.is.an('array')
+                            .with.length(1)
+                            .with.deep.property('[0]')
+                            .that.has.all.keys('id', 'title');
+                    })
+                    .then(function (response) {
+                        expect(response).to.have.deep.property('results[0].title[0]')
+                            .that.is.equal('Another example');
+                    })
+                    .done(done);
+            }
+        );
+    });
+
+    describe('stringQuery()', function () {
+        it('should accept a query string without type', function (done) {
+            var query = 'title:final',
+                result = DB.stringQuery(query).from(testIndex);
+
+            expect(result).to.eventually.have.property('results')
+                .that.is.an('array')
+                .with.length(1);
+
+            expect(result).to.eventually.have.all.keys('results', 'total')
+                .notify(done);
+        });
+
+        it('should accept a query string with type', function (done) {
+            var query = 'title:example',
+                result = DB.stringQuery(query).ofType(testType).from(testIndex);
+
+            expect(result).to.eventually.have.property('results')
+                .that.is.an('array')
+                .with.length(3)
+                .notify(done);
+        });
+
+        it('should accept a query string with type and size', function (done) {
+            var query = 'title:example',
+                result = DB.stringQuery(query).ofType(testType).withSize(1).from(testIndex);
+
+            expect(result).to.eventually.have.property('results')
+                .that.is.an('array')
+                .with.length(1)
+                .notify(done);
+        });
+    });
+
+    describe('dslQuery()', function () {
+        it('should accept the json DSL to query db', function (done) {
+            var query = {
+                    'term': {
+                        'title': 'final'
+                    }
+                },
+
+                result = DB.dslQuery(query).from(testIndex);
+
+            expect(result).to.eventually.have.property('results')
+                .that.is.an('array')
+                .with.length(1);
+
+            expect(result).to.eventually.have.all.keys('results', 'total')
+                .notify(done);
         });
     });
 });

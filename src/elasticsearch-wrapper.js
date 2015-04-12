@@ -25,16 +25,16 @@ var q = require('q'),
     },
 
     adaptResult = function (result) {
-        var _result = result.fields || result._source;
+        var adaptedResult = result.fields || result._source;
 
-        if (_result) {
-            _result.id = result.id || result._id;
+        if (adaptedResult) {
+            adaptedResult.id = result.id || result._id;
 
         } else {
-            _result = result; // assumes the result wasn't a document object
+            adaptedResult = result; // assumes the result wasn't a document object
         }
 
-        return _result;
+        return adaptedResult;
     },
 
     adaptResults = function (results) {
@@ -51,17 +51,16 @@ var q = require('q'),
     },
 
     /**
-     * Takes an array of ids to return many results.
+     * Takes an array of ids to return many results. Unlike get(), getMany() does not need a
+     * type specified as it is not a simple url api. It behaves more like a post, with data
+     * passed to the {host}/_mget url with the -d flag.
      *
+     * @see http://www.elastic.co/guide/en/elasticsearch/reference/1.x/docs-multi-get.html
      * @param {array} ids An array of ids to look up
      * @return {promise}
      */
     getMany = function (ids) {
         var typeName;
-
-        if (!Array.isArray(ids)) {
-            ids = [ids];
-        }
 
         return {
             /**
@@ -74,36 +73,41 @@ var q = require('q'),
             },
 
             'from': function (indexName) {
-                var defer = q.defer();
+                var params = {
+                        'index' : indexName,
+                        'type'  : typeName,
+                        'body': {
+                            'ids': ids
+                        }
+                    },
 
-                if (!ids.length) {
-                    return emptyResult();
-                }
+                    runMultipleGet = function (resolve, reject) {
+                        if (!ids) {
+                            resolve(emptyResult());
 
-                // Ensure that array has only unique ids.
-                // The second boolean parameter is 'isSorted', and runs much faster.
-                ids = unique(ids, true);
+                        } else if (!Array.isArray(ids)) {
+                            ids = [ids];
+                        }
 
-                client.mget({
-                    'index': indexName,
-                    'type': typeName,
-                    'body': {
-                        'ids': ids
-                    }
-                }, function (error, response) {
-                    var results;
+                        // Ensure that array has only unique ids.
+                        // The second boolean parameter is 'isSorted', and runs much faster.
+                        ids = unique(ids, true);
 
-                    if (error) {
-                        defer.reject(adaptError(error));
-                        return;
-                    }
+                        client.mget(params, function (error, response) {
+                            var results;
 
-                    results = adaptResults(response.docs);
-                    results.total = results.results.length;
-                    defer.resolve(results);
-                });
+                            if (error) {
+                                reject(adaptError(error));
+                                return;
+                            }
 
-                return defer.promise;
+                            results = adaptResults(response.docs);
+                            results.total = results.results.length;
+                            resolve(results);
+                        });
+                    };
+
+                return q.Promise(runMultipleGet);
             }
         };
     },
@@ -132,35 +136,38 @@ var q = require('q'),
             },
 
             'from': function (indexName) {
-                var defer = q.defer();
+                var runGet = function (resolve, reject) {
+                    var params = {
+                        'id'    : id,
+                        'index' : indexName,
+                        'type'  : typeName
+                    };
 
-                client.get({
-                    'index': indexName,
-                    'type': typeName,
-                    'id': id
-                }, function (error, response) {
-                    var result;
-
-                    if (error) {
-                        defer.reject(adaptError(error));
+                    if (!typeName) {
+                        reject(new TypeError('You must supply a type when calling get()'));
                         return;
                     }
 
-                    result = adaptResult(response);
-                    defer.resolve(result);
-                });
+                    client.get(params, function (error, response) {
+                        var result;
 
-                return defer.promise;
+                        if (error) {
+                            reject(adaptError(error));
+                            return;
+                        }
+
+                        result = adaptResult(response);
+                        resolve(result);
+                    });
+                };
+
+                return q.Promise(runGet);
             }
         };
     };
 
-exports.post = function (data) {
+exports.post = function (postData) {
     var typeName;
-
-    if (!Array.isArray(data)) {
-        data = [data];
-    }
 
     return {
         ofType: function (_typeName) {
@@ -169,64 +176,41 @@ exports.post = function (data) {
         },
 
         into: function (indexName) {
-            var promises = [],
-                errorDefer;
+            var runPost = function (resolve, reject) {
+                    var params = {
+                        index: indexName,
+                        type: typeName,
+                        timestamp: (new Date()).toISOString(),
+                        body: postData
+                    };
 
-            if (!typeName) {
-                errorDefer = q.defer();
-                errorDefer.reject(new Error('You must specify a type'));
-                return errorDefer.promise;
-            }
+                    if (Array.isArray(postData)) {
+                        reject(new TypeError('Please use the bulk api to post multiple documents'));
+                        return;
+                    }
 
-            data.forEach(function (item) {
-                var params,
-                    defer = q.defer();
+                    if (!postData.createdAt) {
+                        postData.createdAt = (new Date()).toISOString();
+                    }
 
-                promises.push(defer.promise);
+                    if (postData.id) {
+                        params.id = postData.id;
+                    }
 
-                if (!item.createdAt) {
-                    item.createdAt = (new Date()).toISOString();
-                }
-
-                params = {
-                    index: indexName,
-                    type: typeName,
-                    timestamp: (new Date()).toISOString(),
-                    body: item
-                };
-
-                if (item.id) {
-                    params.id = item.id;
-                }
-
-                client.create(
-                    params,
-                    function (error, response) {
+                    client.create(params, function (error, response) {
                         if (error) {
-                            defer.reject(adaptError(error));
+                            reject(adaptError(error));
                             return;
                         }
-                        client.get({
-                            index: indexName,
-                            type: typeName,
-                            id: response._id
-                        }, function (error, result) {
-                            if (error) {
-                                defer.reject(adaptError(error));
-                                return;
-                            }
-                            result = adaptResult(result);
-                            defer.resolve(result);
-                        });
-                    }
-                );
-            });
 
-            if (data.length === 1) {
-                return promises[0];
-            }
+                        resolve(response);
+                    });
+                };
 
-            return q.all(promises);
+            return q.Promise(runPost)
+                .then(function (response) {
+                    return get(response._id).ofType(typeName).from(indexName);
+                });
         }
     };
 };
@@ -280,14 +264,30 @@ exports.dslQuery = function (dslQuery) {
         },
 
         from: function (indexName) {
-            var defer = q.defer(),
+            var dslParams = {},
+
                 params = {
-                    index: indexName,
-                    type: typeName,
-                    from: offset,
-                    size: size
+                    'index': indexName,
+                    'type': typeName,
+                    'from': offset,
+                    'size': size
                 },
-                dslParams = {};
+
+                runQuery = function (resolve, reject) {
+                    client.search(params, function (error, results) {
+                        var response;
+
+                        if (error) {
+                            reject(adaptError(error));
+                            return;
+                        }
+
+                        response = adaptResults(results.hits.hits);
+                        response.total = results.hits.total;
+
+                        resolve(response);
+                    });
+                };
 
             if (sort) {
                 dslParams.sort = sort;
@@ -303,20 +303,7 @@ exports.dslQuery = function (dslQuery) {
 
             params.body = dslParams;
 
-            client.search(params, function (error, results) {
-                var response;
-
-                if (error) {
-                    defer.reject(adaptError(error));
-                    return;
-                }
-
-                response = adaptResults(results.hits.hits);
-                response.total = results.hits.total;
-                defer.resolve(response);
-            });
-
-            return defer.promise;
+            return q.Promise(runQuery);
         }
     };
 };
@@ -356,30 +343,32 @@ exports.stringQuery = function (queryString) {
         },
 
         from: function (indexName) {
-            var defer = q.defer(),
-                params = {
-                    index: indexName,
-                    type: typeName,
-                    from: offset,
-                    size: size,
-                    sort: sort,
-                    q: queryString
+            var params = {
+                    'index' : indexName,
+                    'type'  : typeName,
+                    'from'  : offset,
+                    'size'  : size,
+                    'sort'  : sort,
+                    'q'     : queryString
+                },
+
+                runQuery = function (resolve, reject) {
+                    client.search(params, function (error, results) {
+                        var response;
+
+                        if (error) {
+                            reject(adaptError(error));
+                            return;
+                        }
+
+                        response = adaptResults(results.hits.hits);
+                        response.total = results.hits.total;
+
+                        resolve(response);
+                    });
                 };
 
-            client.search(params, function (error, results) {
-                var response;
-
-                if (error) {
-                    defer.reject(adaptError(error));
-                    return;
-                }
-
-                response = adaptResults(results.hits.hits);
-                response.total = results.hits.total;
-                defer.resolve(response);
-            });
-
-            return defer.promise;
+            return q.Promise(runQuery);
         }
     };
 };
@@ -402,14 +391,14 @@ exports.query = function (query) {
 /**
  * Use to retrieve all results of [type] from [index].
  *
- * @param  {string} type
+ * @param  {string} typeName
  * @return {promise}
  */
-exports.getAll = function (type) {
-    var offset = 0,
-        sort = '',
-        filter,
+exports.getAll = function (typeName) {
+    var filter,
         fields,
+        sort = '',
+        offset = 0,
         size = 1000;
 
     return {
@@ -443,21 +432,31 @@ exports.getAll = function (type) {
         },
 
         from: function (indexName) {
-            var defer = q.defer(),
-                searchParams = {
-                    index: indexName,
-                    q: '_type:' + type,
-                    from: offset,
-                    sort: sort,
-                    size: size
-                },
-                extraParams = {};
+            var extraParams = {},
 
-            if (!type) {
-                // @TODO: if we ever actually need 'types' as a array, check
-                // back in git history.
-                defer.reject(new Error('Type must be supplied'));
-            }
+                searchParams = {
+                    'index' : indexName,
+                    'type'  : typeName,
+                    'from'  : offset,
+                    'sort'  : sort,
+                    'size'  : size
+                },
+
+                runGetAll = function (resolve, reject) {
+                    client.search(searchParams, function (error, results) {
+                        var response;
+
+                        if (error) {
+                            reject(adaptError(error));
+                            return;
+                        }
+
+                        response = adaptResults(results.hits.hits);
+                        response.total = results.hits.total;
+
+                        resolve(response);
+                    });
+                };
 
             if (fields) {
                 searchParams.fields = fields;
@@ -469,20 +468,7 @@ exports.getAll = function (type) {
 
             searchParams.body = extraParams;
 
-            client.search(searchParams, function (error, results) {
-                var response;
-
-                if (error) {
-                    defer.reject(adaptError(error));
-                    return;
-                }
-
-                response = adaptResults(results.hits.hits);
-                response.total = results.hits.total;
-                defer.resolve(response);
-            });
-
-            return defer.promise;
+            return q.Promise(runGetAll);
         }
     };
 };
@@ -509,9 +495,7 @@ exports.put = function (data) {
         },
 
         into: function (indexName) {
-            var defer = q.defer(),
-
-                /**
+            var /**
                  * Loops through the existing data key values and adds any missing from
                  * the data we want to PUT. Then saves to the elasticsearch index.
                  *
@@ -521,10 +505,11 @@ exports.put = function (data) {
                 updateExistingData = function (existingData) {
                     data.updatedAt = (new Date()).toISOString();
 
-                    Object.keys(existingData._source).forEach(function (key) {
-                        if (data[key] === undefined) {
-                            data[key] = existingData._source[key];
-                        }
+                    Object.keys(existingData).filter(function (key) {
+                        return data[key] === undefined;
+
+                    }).forEach(function (key) {
+                        data[key] = existingData[key];
                     });
 
                     return client.update({
@@ -535,30 +520,30 @@ exports.put = function (data) {
                             'doc': data
                         }
                     });
+                },
+
+                runOperation = function (resolve, reject) {
+                    if (!typeName) {
+                        reject(new Error('You must specify a type'));
+                        return;
+                    }
+
+                    // GET the data as it exists now...
+                    get(data.id).ofType(typeName).from(indexName)
+                        // ...update...
+                        .then(updateExistingData)
+                        // now GET the data again just to make certain it is written and to
+                        // make sure that the actual data returned is the version stored.
+                        .then(function (updateResponse) {
+                            return get(updateResponse._id).ofType(typeName).from(indexName);
+                        })
+                        .then(resolve)
+                        .catch(function (error) {
+                            reject(adaptError(error));
+                        });
                 };
 
-            if (!typeName) {
-                defer.reject(new Error('You must specify a type'));
-                return;
-            }
-
-            // GET the data as it exists now...
-            exports.get(data.id).ofType(typeName).from(indexName)
-                // ...update...
-                .then(updateExistingData)
-                // now GET the data again just to make certain it is written and to
-                // make sure that the actual data now stored is returned.
-                .then(function (updateResponse) {
-                    return exports.get(updateResponse._id).ofType(typeName).from(indexName);
-                })
-                .then(function (updatedData) {
-                    defer.resolve(updatedData);
-                })
-                .fail(function (error) {
-                    defer.reject(adaptError(error));
-                });
-
-            return defer.promise;
+            return q.Promise(runOperation);
         }
     };
 };
@@ -583,28 +568,28 @@ exports.deleteById = function (id) {
         },
 
         from: function (indexName) {
-            var defer = q.defer();
+            var runDelete = function (resolve, reject) {
+                client.delete({
+                    index: indexName,
+                    type: typeName,
+                    id: id
+                }, function (error, result) {
 
-            client.delete({
-                index: indexName,
-                type: typeName,
-                id: id
-            }, function (error, result) {
+                    if (error) {
+                        reject(adaptError(error));
+                        return;
+                    }
 
-                if (error) {
-                    defer.reject(adaptError(error));
-                    return;
-                }
+                    result = {
+                        'results': result.found ? [result._id]: [],
+                        'total': result.found ? 1 : 0
+                    };
 
-                result = {
-                    'results': result.found ? [result._id]: [],
-                    'total': result.found ? 1 : 0
-                };
+                    resolve(result);
+                });
+            };
 
-                defer.resolve(result);
-            });
-
-            return defer.promise;
+            return q.Promise(runDelete);
         }
     };
 };
@@ -619,33 +604,32 @@ exports.deleteByQuery = function (query) {
         },
 
         from: function (indexName) {
-            var defer = q.defer();
+            return q.Promise(function (resolve, reject) {
+                client.deleteByQuery({
+                    'index': indexName,
+                    'type': typeName,
+                    'body': {
+                        'query': query
+                    }
+                }, function (error, result) {
+                    var index;
 
-            client.deleteByQuery({
-                'index': indexName,
-                'type': typeName,
-                'body': {
-                    'query': query
-                }
-            }, function (error, result) {
-                var index;
+                    if (error) {
+                        reject(adaptError(error));
+                        return;
+                    }
 
-                if (error) {
-                    defer.reject(adaptError(error));
-                    return;
-                }
+                    if (result._indices.hasOwnProperty(indexName)) {
+                        index = indexName;
 
-                if (result._indices.hasOwnProperty(indexName)) {
-                    index = indexName;
-                } else {
-                    // assumes we're using an alias
-                    index = Object.keys(result._indices)[0];
-                }
+                    } else {
+                        // assumes we're using an alias
+                        index = Object.keys(result._indices)[0];
+                    }
 
-                defer.resolve(result._indices[index]._shards);
+                    resolve(result._indices[index]._shards);
+                });
             });
-
-            return defer.promise;
         }
     };
 };
@@ -665,19 +649,19 @@ exports.delete = function (query) {
  * @return {object} Promise which resolves with the response from ElasticSearch
  */
 exports.bulk = function (actions) {
-    var defer = q.defer();
+    return q.Promise(function (resolve, reject) {
+        client.bulk({
+            body: actions
+        }, function (error, response) {
 
-    client.bulk({
-        body: actions
-    }, function (error, response) {
-        if (error) {
-            defer.reject(adaptError(error));
-        } else {
-            defer.resolve(response);
-        }
+            if (error) {
+                reject(adaptError(error));
+                return;
+            }
+
+            resolve(response);
+        });
     });
-
-    return defer.promise;
 };
 
 /**
@@ -695,29 +679,28 @@ exports.getMapping = function () {
         },
 
         from: function (indexName) {
-            var defer = q.defer(),
-                params = {index: indexName};
+            var params = {index: indexName};
 
             if (type) {
                 params.type = type;
             }
 
-            client.indices.getMapping(params, function (error, response) {
-                if (error) {
-                    defer.reject(adaptError(error));
-                    return;
-                }
+            return q.Promise(function (resolve, reject) {
+                client.indices.getMapping(params, function (error, response) {
+                    if (error) {
+                        reject(adaptError(error));
+                        return;
+                    }
 
-                response = response[indexName].mappings;
+                    response = response[indexName].mappings;
 
-                if (type) {
-                    response = response[type].properties;
-                }
+                    if (type) {
+                        response = response[type].properties;
+                    }
 
-                defer.resolve(response);
+                    resolve(response);
+                });
             });
-
-            return defer.promise;
         }
     };
 };
@@ -738,9 +721,7 @@ exports.putMapping = function (mapping) {
         },
 
         into: function (indexName) {
-            var defer = q.defer(),
-
-                params = {
+            var params = {
                     index: indexName,
                     type: type
                 };
@@ -755,17 +736,17 @@ exports.putMapping = function (mapping) {
 
             params.body = mapping;
 
-            client.indices.putMapping(params, function (error, response) {
-                if (error) {
-                    defer.reject(adaptError(error));
-                    return;
-                }
+            return q.Promise(function (resolve, reject) {
+                client.indices.putMapping(params, function (error, response) {
+                    if (error) {
+                        reject(adaptError(error));
+                        return;
+                    }
 
-                // client returns {acknowledged: true} on success
-                defer.resolve(response);
+                    // client returns {acknowledged: true} on success
+                    resolve(response);
+                });
             });
-
-            return defer.promise;
         }
     };
 };
@@ -777,19 +758,43 @@ exports.putMapping = function (mapping) {
  * @return {object} Promise which resolves with the index name (or false if it doesn't exist)
  */
 exports.getAlias = function (aliasName) {
-    var defer = q.defer();
+    var runGetAlias = function (resolve, reject) {
+        client.indices.getAlias({
+            name: aliasName
+        }, function (error, response) {
+            if (error) {
+                reject(adaptError(error));
+                return;
+            }
 
-    client.indices.getAlias({
-        name: aliasName
-    }, function (error, response) {
-        if (error) {
-            defer.resolve(false);
-        } else {
-            defer.resolve(Object.keys(response)[0]);
-        }
-    });
+            resolve(Object.keys(response)[0]);
+        });
+    };
 
-    return defer.promise;
+    return q.Promise(runGetAlias);
+};
+
+/**
+ * Checks an alias exists.
+ *
+ * @param {string} aliasName
+ * @return {object} Promise resolving to true or false;
+ */
+exports.checkAliasExists = function (aliasName) {
+    var runCheckAliasExists = function (resolve, reject) {
+        client.indices.existsAlias({
+            name: aliasName
+        }, function (error, response) {
+            if (error) {
+                reject(adaptError(error));
+                return;
+            }
+
+            resolve(response);
+        });
+    };
+
+    return q.Promise(runCheckAliasExists);
 };
 
 /**
@@ -801,21 +806,21 @@ exports.getAlias = function (aliasName) {
 exports.deleteAlias = function (aliasName) {
     return {
         from: function (indexName) {
-            var defer = q.defer();
+            var runDelete = function (resolve, reject) {
+                client.indices.deleteAlias({
+                    'index': indexName,
+                    'name': aliasName
+                }, function (error, response) {
+                    if (error) {
+                        reject(adaptError(error));
+                        return;
+                    }
 
-            client.indices.deleteAlias({
-                index: indexName,
-                name: aliasName
-            }, function (error, response) {
-                if (error) {
-                    defer.reject(adaptError(error));
-                    return;
-                }
+                    resolve(response);
+                });
+            };
 
-                defer.resolve(response);
-            });
-
-            return defer.promise;
+            return q.Promise(runDelete);
         }
     };
 };
@@ -828,75 +833,75 @@ exports.deleteAlias = function (aliasName) {
  */
 exports.createAlias = function (aliasName) {
     return {
-        to: function (indexName) {
-            var defer = q.defer();
+        for: function (indexName) {
+            var runCreateAlias = function (resolve, reject) {
+                client.indices.putAlias({
+                    index: indexName,
+                    name: aliasName
+                }, function (error, response) {
+                    if (error) {
+                        reject(adaptError(error));
+                        return;
+                    }
 
-            client.indices.putAlias({
-                index: indexName,
-                name: aliasName
-            }, function (error, response) {
-                if (error) {
-                    defer.reject(adaptError(error));
-                    return;
-                }
+                    resolve(response);
+                });
+            };
 
-                defer.resolve(response);
-            });
-
-            return defer.promise;
+            return q.Promise(runCreateAlias);
         }
     };
 };
 
 exports.checkIndexExists = function (indexName) {
-    var defer = q.defer();
+    var runCheckIndexExists = function (resolve, reject) {
+        client.indices.exists({
+            index: indexName
+        }, function (error, response) {
+            if (error) {
+                reject(adaptError(error));
+                return;
+            }
 
-    client.indices.exists({
-        index: indexName
-    }, function (error, response) {
-        if (error) {
-            defer.reject(adaptError(error));
-            return;
-        }
+            resolve(response);
+        });
+    };
 
-        defer.resolve(response);
-    });
-
-    return defer.promise;
+    return q.Promise(runCheckIndexExists);
 };
 
 exports.destroyIndex = function (indexName) {
-    var defer = q.defer();
+    var runDestroyIndex = function (resolve, reject) {
+        client.indices.delete({
+            index: indexName
+        }, function (error, response) {
+            if (error) {
+                reject(adaptError(error));
+                return;
+            }
 
-    client.indices.delete({
-        index: indexName
-    }, function (error, response) {
-        if (error) {
-            defer.reject(adaptError(error));
-            return;
-        }
+            resolve(response);
+        });
+    };
 
-        defer.resolve(response);
-    });
-
-    return defer.promise;
+    return q.Promise(runDestroyIndex);
 };
 
 exports.createIndex = function (indexName) {
-    var defer = q.defer();
+    var runCreateIndex = function (resolve, reject) {
+        client.indices.create({
+            index: indexName
+        }, function (error, response) {
+            if (error) {
+                reject(adaptError(error));
+                return;
+            }
 
-    client.indices.create({
-        index: indexName
-    }, function (error, response) {
-        if (error) {
-            defer.reject(adaptError(error));
-            return;
-        }
+            resolve(response);
+        });
+    };
 
-        defer.resolve(response);
-    });
-
-    return defer.promise;
+    return q.Promise(runCreateIndex);
 };
 
 /**
@@ -916,15 +921,15 @@ exports.config = function (_config) {
     config = _config;
 
     clientOptions = {
-        host: config.db.url || 'http://localhost:9200'
+        host: config.url || 'http://localhost:9200'
     };
 
-    if (config.db.keepAlive !== undefined) {
-        clientOptions.keepAlive = config.db.keepAlive;
+    if (config.keepAlive !== undefined) {
+        clientOptions.keepAlive = config.keepAlive;
     }
 
-    if (config.db.logging) {
-        clientOptions.log = config.db.logging;
+    if (config.logging) {
+        clientOptions.log = config.logging;
     }
 
     // @todo: dependency injection needed here
@@ -942,21 +947,21 @@ exports.config = function (_config) {
  * @return {object} promise
  */
 exports.createTemplate = function (name, template) {
-    var defer = q.defer();
+    var runCreateTemplate = function (resolve, reject) {
+        client.indices.putTemplate({
+            name: name,
+            body: template
+        }, function (error, response) {
+            if (error) {
+                reject(adaptError(error));
+                return;
+            }
 
-    client.indices.putTemplate({
-        name: name,
-        body: template
-    }, function (error, response) {
-        if (error) {
-            defer.reject(adaptError(error));
-            return;
-        }
+            resolve(response);
+        });
+    };
 
-        defer.resolve(response);
-    });
-
-    return defer.promise;
+    return q.Promise(runCreateTemplate);
 };
 
 /**
@@ -966,20 +971,20 @@ exports.createTemplate = function (name, template) {
  * @return {object} Promise
  */
 exports.deleteTemplate = function (name) {
-    var defer = q.defer();
+    var runDeleteTemplate = function (resolve, reject) {
+        client.indices.deleteTemplate({
+            'name': name
+        }, function (error, response) {
+            if (error) {
+                reject(adaptError(error));
+                return;
+            }
 
-    client.indices.deleteTemplate({
-        name: name
-    }, function (error, response) {
-        if (error) {
-            defer.reject(adaptError(error));
-            return;
-        }
+            resolve(response);
+        });
+    };
 
-        defer.resolve(response);
-    });
-
-    return defer.promise;
+    return q.Promise(runDeleteTemplate);
 };
 
 /**
@@ -989,33 +994,25 @@ exports.deleteTemplate = function (name) {
  * @return {object} Promise
  */
 exports.getTemplate = function (name) {
-    var defer = q.defer();
+    var runGetTemplate = function (resolve, reject) {
+        client.indices.getTemplate({
+            'name': name
+        }, function (error, response) {
+            if (error) {
+                reject(adaptError(error));
+                return;
+            }
 
-    client.indices.getTemplate({
-        name: name
-    }, function (error, response) {
-        if (error) {
-            defer.reject(adaptError(error));
-            return;
-        }
+            resolve(response);
+        });
+    };
 
-        defer.resolve(response);
-    });
-
-    return defer.promise;
+    return q.Promise(runGetTemplate);
 };
 
 // API
 exports.get = get;
 exports.getMany = getMany;
-
-/**
- * Allows for easy stubbing in unit tests.
- * @return {object} The elasticsearch.js client
- */
-exports.getClient = function () {
-    return client;
-};
 
 /**
  * Count only works with a query. Use filtered query to use with filters.
@@ -1037,9 +1034,19 @@ exports.count = function (type) {
         },
 
         from: function (indexName) {
-            var defer        = q.defer(),
-                searchParams = {},
-                extraParams  = {};
+            var searchParams = {},
+                extraParams  = {},
+
+                runCount = function (resolve, reject) {
+                    client.count(searchParams, function (error, response) {
+                        if (error) {
+                            reject(adaptError(error));
+                            return;
+                        }
+
+                        resolve(response.count);
+                    });
+                };
 
             if (indexName) {
                 searchParams.index = indexName;
@@ -1055,16 +1062,7 @@ exports.count = function (type) {
 
             searchParams.body = extraParams;
 
-            client.count(searchParams, function (error, response) {
-                if (error) {
-                    defer.reject(adaptError(error));
-                    return;
-                }
-
-                defer.resolve(response.count);
-            });
-
-            return defer.promise;
+            return q.Promise(runCount);
         }
     };
 };

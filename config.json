@@ -1,0 +1,9 @@
+{
+    "db": {
+        "url": "http://localhost:9200",
+        "logging": "trace"
+    },
+    "tests": {
+        "indexName": "ew_test"
+    }
+}

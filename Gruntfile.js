@@ -20,7 +20,7 @@ module.exports = function (grunt) {
             },
             local: {
                 files: {
-                    'quality/': ['src/**/*.js', 'test/**/*.js']
+                    'metrics/quality/': ['src/**/*.js', 'test/**/*.js']
                 }
             }
         },
