@@ -20,7 +20,7 @@ var assert      = require('assert'),
         {index: {_type: testType, _id: 1, _index: testIndex}},
         {title: 'This is an example', body: 'It has a title and body'},
         {index: {_type: testType, _id: 2, _index: testIndex}},
-        {title: 'Another example', user: '1234'},
+        {title: 'Another example', user: '1234', type: 'lala'},
         {index: {_type: testType, _id: 3, _index: testIndex}},
         {title: 'Final example', body: 'Broad shoulders and narrow waist', user: '1337'}
     ],
@@ -192,8 +192,10 @@ describe('elasticsearch-wrapper', function () {
         it('should return the mappings for all types', function (done) {
             var validateMappingKeys = function (mapping) {
                 var keys = Object.keys(mapping);
-                assert.equal(keys.length, 1);
-                assert.equal(keys[0], 'example');
+
+                expect(keys).to.have.length(1);
+
+                expect(keys[0]).to.equal(testType);
             };
 
             DB.getMapping().from(testIndex)
@@ -204,18 +206,13 @@ describe('elasticsearch-wrapper', function () {
         it('should return the mappings for a specific type', function (done) {
             var validateMapping = function (mapping) {
                 var keys = Object.keys(mapping),
-                    expected = ['body', 'title', 'user'],
-                    i;
+                    expected = ['body', 'title', 'user', 'type'];
 
-                assert.equal(keys.length, expected.length);
-
-                for (i = 0; i < expected.length; i += 1) {
-                    // is there a better way to do this?
-                    assert.notStrictEqual(keys.indexOf(expected[i]), -1);
-                }
+                expect(keys).to.have.length(expected.length)
+                    .and.to.have.members(expected);
             };
 
-            DB.getMapping().ofType('example').from(testIndex)
+            DB.getMapping().ofType(testType).from(testIndex)
                 .then(validateMapping)
                 .done(done);
         });
@@ -279,7 +276,7 @@ describe('elasticsearch-wrapper', function () {
         it('should get a document by id', function (done) {
             var expected = testData[1],
 
-                result = DB.get(1).ofType('example').from(testIndex);
+                result = DB.get(1).ofType(testType).from(testIndex);
 
             expected.id = '1';
 
@@ -302,7 +299,7 @@ describe('elasticsearch-wrapper', function () {
                     'body': 'This is a load of hogwash'
                 },
 
-                result = DB.post(expected).ofType('example').into(testIndex);
+                result = DB.post(expected).ofType(testType).into(testIndex);
 
             // the id property we just added will not have it's value evaluated here.
             expect(result).to.eventually.have.all.keys('id', 'body', 'title');
@@ -330,31 +327,52 @@ describe('elasticsearch-wrapper', function () {
         });
 
         it('should return all results for ids supplied', function (done) {
-            var result = DB.getMany([1, 2, 3]).ofType('example').from(testIndex);
-
-            expect(result).to.eventually.have.all.keys('results', 'total');
-
-            expect(result).to.eventually.have.property('total')
-                .that.is.a('number')
-                .that.equals(3);
-
-            expect(result).to.eventually.have.property('results')
-                .that.is.an('array')
-                .with.length(3)
-                .notify(done);
+            DB.getMany([1, 2, 3]).ofType(testType).from(testIndex)
+                .tap(function (response) {
+                    expect(response).to.have.all.keys('results', 'total');
+                })
+                .tap(function (response) {
+                    expect(response).to.have.property('total')
+                        .that.is.a('number')
+                        .that.equals(3);
+                })
+                .then(function (response) {
+                    expect(response).to.have.property('results')
+                        .that.is.an('array')
+                        .with.length(3);
+                })
+                .done(done);
         });
     });
 
     describe('getAll()', function () {
-        it('should retrieve all the examples', function (done) {
-            var result = DB.getAll(testType).from(testIndex);
+        it('should retrieve all the filtered examples', function (done) {
+            var filter = {
+                    'bool': {
+                        'must': [
+                            {
+                                'terms': {
+                                    'user': ['1234', '1337']
+                                }
+                            },
+                            {
+                                'term': {
+                                    'type': 'lala'
+                                }
+                            }
+                        ]
+                    }
+                };
 
-            expect(result).to.eventually.have.property('results')
-                .that.is.an('array')
-                .with.length(3);
+            DB.getAll(testType).filterBy(filter).from(testIndex)
+                .then(function (response) {
+                    expect(response).to.have.all.keys('results', 'total');
 
-            expect(result).to.eventually.have.all.keys('results', 'total')
-                .notify(done);
+                    expect(response).to.have.property('results')
+                        .that.is.an('array')
+                        .with.length(1);
+                })
+                .done(done);
         });
 
         it('should retrieve all the examples and limit to specified fields with an offset',

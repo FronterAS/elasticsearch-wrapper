@@ -93,7 +93,6 @@ var q = require('q'),
                         // The second boolean parameter is 'isSorted', and runs much faster.
                         ids = unique(ids, true);
 
-
                         client.mget(params, function (error, response) {
                             var results;
 
