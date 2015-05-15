@@ -175,6 +175,11 @@ exports.post = function (postData) {
             return this;
         },
 
+        withId: function (_id) {
+            postData.id = _id;
+            return this;
+        },
+
         into: function (indexName) {
             var runPost = function (resolve, reject) {
                     var params = {
