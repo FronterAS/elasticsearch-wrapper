@@ -20,28 +20,28 @@
     "url": "https://github.com/FronterAS/elastic-search-wrapper/issues"
   },
   "dependencies": {
-    "elasticsearch": "~4.0.2",
-    "q": "~1.2.0",
+    "elasticsearch": "~5.0.0",
+    "q": "~1.4.1",
     "array-unique": "^0.2.1"
   },
   "devDependencies": {
-    "grunt-bump": "^0.3.0",
-    "time-grunt": "^1.1.0",
-    "load-grunt-tasks": "^3.1.0",
-    "chai": "^2.2.0",
-    "chai-as-promised": "^4.3.0",
+    "grunt-bump": "^0.3.1",
+    "time-grunt": "^1.2.1",
+    "load-grunt-tasks": "^3.2.0",
+    "chai": "^3.0.0",
+    "chai-as-promised": "^5.1.0",
     "grunt": "^0.4.5",
     "grunt-blanket": "0.0.8",
     "grunt-contrib-clean": "^0.6.0",
     "grunt-contrib-copy": "^0.8.0",
-    "grunt-contrib-jshint": "^0.11.1",
+    "grunt-contrib-jshint": "^0.11.2",
     "grunt-jscs-checker": "^0.8.1",
-    "grunt-mocha": "^0.4.12",
+    "grunt-mocha": "^0.4.13",
     "grunt-mocha-test": "^0.12.7",
     "grunt-plato": "^1.2.1",
-    "grunt-mocha-istanbul": "^2.3.1",
-    "sinon": "^1.14.1",
-    "sinon-chai": "^2.7.0",
-    "istanbul": "^0.3.13"
+    "grunt-mocha-istanbul": "^2.4.0",
+    "sinon": "^1.15.4",
+    "sinon-chai": "^2.8.0",
+    "istanbul": "^0.3.17"
   }
 }

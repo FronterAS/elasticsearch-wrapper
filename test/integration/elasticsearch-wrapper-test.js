@@ -49,7 +49,7 @@ var assert      = require('assert'),
     },
 
     wait = function () {
-        return q.delay(1500);
+        return q.delay(3000);
     };
 
 describe('elasticsearch-wrapper', function () {
@@ -69,9 +69,10 @@ describe('elasticsearch-wrapper', function () {
                 expect(response.errors).to.be.false;
                 expect(response.items).to.have.length(3);
             })
-            .catch(console.error)
             .tap(wait)
-            .done(done);
+            .then(done)
+            .catch(done)
+            .done();
     });
 
     // The before actually tests the destroyIndex api.
@@ -82,8 +83,9 @@ describe('elasticsearch-wrapper', function () {
                     'acknowledged': true
                 });
             })
-            .catch(console.error)
-            .done(done);
+            .then(done)
+            .catch(done)
+            .done();
     });
 
     describe('putMapping', function () {
@@ -133,9 +135,10 @@ describe('elasticsearch-wrapper', function () {
             expect(putMapping).to.have.a.property('into')
                 .that.is.a('function');
 
-            result = putMapping.ofType('testMappingType').into('test');
+            result = putMapping.ofType('testMappingType').into(testIndex);
 
-            expect(result).to.become({acknowledged: true}).notify(done);
+            expect(result).to.become({acknowledged: true})
+                .notify(done);
         });
     });
 
@@ -193,9 +196,10 @@ describe('elasticsearch-wrapper', function () {
             var validateMappingKeys = function (mapping) {
                 var keys = Object.keys(mapping);
 
-                expect(keys).to.have.length(1);
+                expect(keys).to.have.length(2);
 
-                expect(keys[0]).to.equal(testType);
+                expect(keys[0]).to.equal('testMappingType');
+                expect(keys[1]).to.equal(testType);
             };
 
             DB.getMapping().from(testIndex)

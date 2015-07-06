@@ -2,10 +2,9 @@
 
 var q = require('q'),
     unique = require('array-unique'),
+    elasticsearch = require('elasticsearch'),
 
     config,
-
-    elasticsearch = require('elasticsearch'),
     client,
 
     /**
