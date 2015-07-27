@@ -2,9 +2,10 @@
 
 var q = require('q'),
     unique = require('array-unique'),
-    elasticsearch = require('elasticsearch'),
 
     config,
+
+    elasticsearch = require('elasticsearch'),
     client,
 
     /**
@@ -118,7 +119,8 @@ var q = require('q'),
      * @return {object}    The chainable functionality used to build the sentence.
      */
     get = function (id) {
-        var typeName;
+        var typeName,
+            parentId;
 
         if (Array.isArray(id)) {
             return getMany(id);
@@ -134,6 +136,11 @@ var q = require('q'),
                 return this;
             },
 
+            'withParent': function (_parentId) {
+                parentId = _parentId;
+                return this;
+            },
+
             'from': function (indexName) {
                 var runGet = function (resolve, reject) {
                     var params = {
@@ -141,6 +148,10 @@ var q = require('q'),
                         'index' : indexName,
                         'type'  : typeName
                     };
+
+                    if (parentId !== undefined) {
+                        params.parent = parentId;
+                    }
 
                     if (!typeName) {
                         reject(new TypeError('You must supply a type when calling get()'));
@@ -166,7 +177,8 @@ var q = require('q'),
     };
 
 exports.post = function (postData) {
-    var typeName;
+    var typeName,
+        parentId;
 
     return {
         ofType: function (_typeName) {
@@ -179,41 +191,50 @@ exports.post = function (postData) {
             return this;
         },
 
+        withParent: function (_parent) {
+            parentId = _parent;
+            return this;
+        },
+
         into: function (indexName) {
             var runPost = function (resolve, reject) {
-                    var params = {
-                        index: indexName,
-                        type: typeName,
-                        timestamp: (new Date()).toISOString(),
-                        body: postData
-                    };
+                var params = {
+                    index: indexName,
+                    type: typeName,
+                    timestamp: (new Date()).toISOString(),
+                    body: postData
+                };
 
-                    if (Array.isArray(postData)) {
-                        reject(new TypeError('Please use the bulk api to post multiple documents'));
+                if (Array.isArray(postData)) {
+                    reject(new TypeError('Please use the bulk api to post multiple documents'));
+                    return;
+                }
+
+                if (!postData.createdAt) {
+                    postData.createdAt = (new Date()).toISOString();
+                }
+
+                if (parentId !== undefined) {
+                    params.parent = parentId;
+                }
+
+                if (postData.id) {
+                    params.id = postData.id;
+                }
+
+                client.create(params, function (error, response) {
+                    if (error) {
+                        reject(adaptError(error));
                         return;
                     }
 
-                    if (!postData.createdAt) {
-                        postData.createdAt = (new Date()).toISOString();
-                    }
-
-                    if (postData.id) {
-                        params.id = postData.id;
-                    }
-
-                    client.create(params, function (error, response) {
-                        if (error) {
-                            reject(adaptError(error));
-                            return;
-                        }
-
-                        resolve(response);
-                    });
-                };
+                    resolve(response);
+                });
+            };
 
             return q.Promise(runPost)
                 .then(function (response) {
-                    return get(response._id).ofType(typeName).from(indexName);
+                    return get(response._id).ofType(typeName).withParent(parentId).from(indexName);
                 });
         }
     };
@@ -401,6 +422,7 @@ exports.query = function (query) {
 exports.getAll = function (typeName) {
     var filter,
         fields,
+        aggs,
         sort = '',
         offset = 0,
         size = 1000;
@@ -413,6 +435,19 @@ exports.getAll = function (typeName) {
 
         fields: function (_fields) {
             fields = _fields;
+            return this;
+        },
+
+        aggs: function (_aggs) {
+            var aggsList = {};
+            _aggs.forEach(function (_agg, index) {
+                aggsList[index] = {
+                    children: {
+                        type: _agg
+                    }
+                };
+            });
+            aggs = aggsList;
             return this;
         },
 

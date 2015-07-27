@@ -7,16 +7,17 @@
  */
 require('../spec-helper.js');
 
-var assert      = require('assert'),
-    q           = require('q'),
-    DB          = require('../../src/elasticsearch-wrapper'),
-    config      = require('../../config.json'),
+var assert        = require('assert'),
+    q             = require('q'),
+    DB            = require('../../src/elasticsearch-wrapper'),
+    config        = require('../../config.json'),
 
-    testIndex   = config.tests.indexName,
+    testIndex     = config.tests.indexName,
 
-    testType    = 'example',
+    testType      = 'example',
+    childTestType = 'child',
 
-    testData    = [
+    testData      = [
         {index: {_type: testType, _id: 1, _index: testIndex}},
         {title: 'This is an example', body: 'It has a title and body'},
         {index: {_type: testType, _id: 2, _index: testIndex}},
@@ -24,6 +25,15 @@ var assert      = require('assert'),
         {index: {_type: testType, _id: 3, _index: testIndex}},
         {title: 'Final example', body: 'Broad shoulders and narrow waist', user: '1337'}
     ],
+
+    childTestData = {
+        type: childTestType,
+        index: testIndex,
+        parent: 1,
+        body: {
+            name: 'A child example'
+        }
+    },
 
     testTemplate = {
         'template': testIndex,
@@ -42,6 +52,16 @@ var assert      = require('assert'),
                     'user': {
                         'type': 'string',
                         'index': 'not_analyzed'
+                    }
+                }
+            },
+            'child': {
+                '_parent': {
+                    'type': testType
+                },
+                'properties': {
+                    'name': {
+                        'type': 'string'
                     }
                 }
             }
@@ -68,6 +88,15 @@ describe('elasticsearch-wrapper', function () {
             .then(function (response) {
                 expect(response.errors).to.be.false;
                 expect(response.items).to.have.length(3);
+            })
+            .then(function () {
+                return DB.post(childTestData.body).ofType(childTestData.type).withParent(childTestData.parent).into(childTestData.index);
+            })
+            .then(function (response) {
+                expect(response.errors).to.be.undefined;
+                expect(response).to.contain.property('name');
+                expect(response.name).to.equal(childTestData.body.name);
+                childTestData.body = response;
             })
             .tap(wait)
             .then(done)
@@ -196,10 +225,11 @@ describe('elasticsearch-wrapper', function () {
             var validateMappingKeys = function (mapping) {
                 var keys = Object.keys(mapping);
 
-                expect(keys).to.have.length(2);
+                expect(keys).to.have.length(3);
 
                 expect(keys[0]).to.equal('testMappingType');
                 expect(keys[1]).to.equal(testType);
+                expect(keys[2]).to.equal(childTestType);
             };
 
             DB.getMapping().from(testIndex)
@@ -283,6 +313,15 @@ describe('elasticsearch-wrapper', function () {
                 result = DB.get(1).ofType(testType).from(testIndex);
 
             expected.id = '1';
+
+            expect(result).to.become(expected)
+                .notify(done);
+        });
+
+        it('should get a child document by id and its parent id', function (done) {
+            var expected = childTestData.body,
+
+                result = DB.get(childTestData.body.id).ofType(childTestType).withParent(childTestData.parent).from(testIndex);
 
             expect(result).to.become(expected)
                 .notify(done);
