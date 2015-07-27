@@ -126,7 +126,8 @@ var q = require('q'),
      */
     get = function (id) {
         var typeName,
-            parentId;
+            parentId,
+            aggs;
 
         if (Array.isArray(id)) {
             return getMany(id);
@@ -147,6 +148,19 @@ var q = require('q'),
                 return this;
             },
 
+            aggregations: function (_aggregations) {
+                var aggsList = {};
+                _aggregations.forEach(function (_agg, index) {
+                    aggsList[index] = {
+                        children: {
+                            type: _agg
+                        }
+                    };
+                });
+                aggs = aggsList;
+                return this;
+            },
+
             'from': function (indexName) {
                 var runGet = function (resolve, reject) {
                     var params = {
@@ -157,6 +171,10 @@ var q = require('q'),
 
                     if (parentId) {
                         params.parent = parentId;
+                    }
+
+                    if (aggs) {
+                        params.aggs = aggs;
                     }
 
                     if (!typeName) {
@@ -450,7 +468,7 @@ exports.getAll = function (typeName) {
             return this;
         },
 
-        aggs: function (_aggs) {
+        aggregations: function (_aggs) {
             var aggsList = {};
             _aggs.forEach(function (_agg, index) {
                 aggsList[index] = {
@@ -511,6 +529,10 @@ exports.getAll = function (typeName) {
 
             if (parentId) {
                 searchParams.parent = parentId;
+            }
+
+            if (aggs) {
+                searchParams.aggs = aggs;
             }
 
             if (fields) {
