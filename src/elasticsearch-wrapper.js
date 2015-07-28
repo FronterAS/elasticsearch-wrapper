@@ -73,7 +73,7 @@ var q = require('q'),
                 return this;
             },
 
-            withParent: function (_parentId) {
+            'withParent': function (_parentId) {
                 parentId = _parentId;
                 return this;
             },
@@ -113,6 +113,10 @@ var q = require('q'),
                         });
                     };
 
+                if (parentId) {
+                    params.parent = parentId;
+                }
+
                 return q.Promise(runMultipleGet);
             }
         };
@@ -126,8 +130,7 @@ var q = require('q'),
      */
     get = function (id) {
         var typeName,
-            parentId,
-            aggs;
+            parentId;
 
         if (Array.isArray(id)) {
             return getMany(id);
@@ -148,19 +151,6 @@ var q = require('q'),
                 return this;
             },
 
-            aggregations: function (_aggregations) {
-                var aggsList = {};
-                _aggregations.forEach(function (_agg, index) {
-                    aggsList[index] = {
-                        children: {
-                            type: _agg
-                        }
-                    };
-                });
-                aggs = aggsList;
-                return this;
-            },
-
             'from': function (indexName) {
                 var runGet = function (resolve, reject) {
                     var params = {
@@ -171,10 +161,6 @@ var q = require('q'),
 
                     if (parentId) {
                         params.parent = parentId;
-                    }
-
-                    if (aggs) {
-                        params.aggs = aggs;
                     }
 
                     if (!typeName) {
@@ -446,7 +432,6 @@ exports.query = function (query) {
 exports.getAll = function (typeName) {
     var filter,
         fields,
-        aggs,
         parentId,
         sort = '',
         offset = 0,
@@ -465,19 +450,6 @@ exports.getAll = function (typeName) {
 
         fields: function (_fields) {
             fields = _fields;
-            return this;
-        },
-
-        aggregations: function (_aggs) {
-            var aggsList = {};
-            _aggs.forEach(function (_agg, index) {
-                aggsList[index] = {
-                    children: {
-                        type: _agg
-                    }
-                };
-            });
-            aggs = aggsList;
             return this;
         },
 
@@ -529,10 +501,6 @@ exports.getAll = function (typeName) {
 
             if (parentId) {
                 searchParams.parent = parentId;
-            }
-
-            if (aggs) {
-                searchParams.aggs = aggs;
             }
 
             if (fields) {
