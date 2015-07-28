@@ -11,7 +11,9 @@ install:
     - npm install
 
 before_script:
-    - sed s/trace/error/ config.js.example > config.js
+    - sed s/trace/error/ config.json.example > config.json
 
 script:
     - grunt travis
+
+sudo: false
