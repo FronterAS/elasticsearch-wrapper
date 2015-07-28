@@ -15,3 +15,5 @@ before_script:
 
 script:
     - grunt travis
+
+sudo: false
