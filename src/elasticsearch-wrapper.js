@@ -2,9 +2,10 @@
 
 var q = require('q'),
     unique = require('array-unique'),
-    elasticsearch = require('elasticsearch'),
 
     config,
+
+    elasticsearch = require('elasticsearch'),
     client,
 
     /**
@@ -59,7 +60,8 @@ var q = require('q'),
      * @return {promise}
      */
     getMany = function (ids) {
-        var typeName;
+        var typeName,
+            parentId;
 
         return {
             /**
@@ -68,6 +70,11 @@ var q = require('q'),
              */
             'ofType': function (_typeName) {
                 typeName = _typeName;
+                return this;
+            },
+
+            'withParent': function (_parentId) {
+                parentId = _parentId;
                 return this;
             },
 
@@ -106,6 +113,10 @@ var q = require('q'),
                         });
                     };
 
+                if (parentId) {
+                    params.parent = parentId;
+                }
+
                 return q.Promise(runMultipleGet);
             }
         };
@@ -118,7 +129,8 @@ var q = require('q'),
      * @return {object}    The chainable functionality used to build the sentence.
      */
     get = function (id) {
-        var typeName;
+        var typeName,
+            parentId;
 
         if (Array.isArray(id)) {
             return getMany(id);
@@ -134,6 +146,11 @@ var q = require('q'),
                 return this;
             },
 
+            'withParent': function (_parentId) {
+                parentId = _parentId;
+                return this;
+            },
+
             'from': function (indexName) {
                 var runGet = function (resolve, reject) {
                     var params = {
@@ -141,6 +158,10 @@ var q = require('q'),
                         'index' : indexName,
                         'type'  : typeName
                     };
+
+                    if (parentId) {
+                        params.parent = parentId;
+                    }
 
                     if (!typeName) {
                         reject(new TypeError('You must supply a type when calling get()'));
@@ -166,7 +187,8 @@ var q = require('q'),
     };
 
 exports.post = function (postData) {
-    var typeName;
+    var typeName,
+        parentId;
 
     return {
         ofType: function (_typeName) {
@@ -179,41 +201,50 @@ exports.post = function (postData) {
             return this;
         },
 
+        withParent: function (_parent) {
+            parentId = _parent;
+            return this;
+        },
+
         into: function (indexName) {
             var runPost = function (resolve, reject) {
-                    var params = {
-                        index: indexName,
-                        type: typeName,
-                        timestamp: (new Date()).toISOString(),
-                        body: postData
-                    };
+                var params = {
+                    index: indexName,
+                    type: typeName,
+                    timestamp: (new Date()).toISOString(),
+                    body: postData
+                };
 
-                    if (Array.isArray(postData)) {
-                        reject(new TypeError('Please use the bulk api to post multiple documents'));
+                if (Array.isArray(postData)) {
+                    reject(new TypeError('Please use the bulk api to post multiple documents'));
+                    return;
+                }
+
+                if (!postData.createdAt) {
+                    postData.createdAt = (new Date()).toISOString();
+                }
+
+                if (parentId) {
+                    params.parent = parentId;
+                }
+
+                if (postData.id) {
+                    params.id = postData.id;
+                }
+
+                client.create(params, function (error, response) {
+                    if (error) {
+                        reject(adaptError(error));
                         return;
                     }
 
-                    if (!postData.createdAt) {
-                        postData.createdAt = (new Date()).toISOString();
-                    }
-
-                    if (postData.id) {
-                        params.id = postData.id;
-                    }
-
-                    client.create(params, function (error, response) {
-                        if (error) {
-                            reject(adaptError(error));
-                            return;
-                        }
-
-                        resolve(response);
-                    });
-                };
+                    resolve(response);
+                });
+            };
 
             return q.Promise(runPost)
                 .then(function (response) {
-                    return get(response._id).ofType(typeName).from(indexName);
+                    return get(response._id).ofType(typeName).withParent(parentId).from(indexName);
                 });
         }
     };
@@ -401,6 +432,7 @@ exports.query = function (query) {
 exports.getAll = function (typeName) {
     var filter,
         fields,
+        parentId,
         sort = '',
         offset = 0,
         size = 1000;
@@ -408,6 +440,11 @@ exports.getAll = function (typeName) {
     return {
         withOffset: function (_offset) {
             offset = _offset;
+            return this;
+        },
+
+        withParent: function (_parentId) {
+            parentId = _parentId;
             return this;
         },
 
@@ -462,6 +499,10 @@ exports.getAll = function (typeName) {
                     });
                 };
 
+            if (parentId) {
+                searchParams.parent = parentId;
+            }
+
             if (fields) {
                 searchParams.fields = fields;
             }
@@ -484,7 +525,8 @@ exports.getAll = function (typeName) {
  * @return {object}
  */
 exports.put = function (data) {
-    var typeName;
+    var typeName,
+        parentId;
 
     return {
 
@@ -498,6 +540,11 @@ exports.put = function (data) {
             return this;
         },
 
+        withParent: function (_parentId) {
+            parentId = _parentId;
+            return this;
+        },
+
         into: function (indexName) {
             var /**
                  * Loops through the existing data key values and adds any missing from
@@ -507,6 +554,8 @@ exports.put = function (data) {
                  * @return {promise}             Resolves to an adapted data set.
                  */
                 updateExistingData = function (existingData) {
+                    var params;
+
                     data.updatedAt = (new Date()).toISOString();
 
                     Object.keys(existingData).filter(function (key) {
@@ -516,14 +565,20 @@ exports.put = function (data) {
                         data[key] = existingData[key];
                     });
 
-                    return client.update({
+                    params = {
                         'id': data.id,
                         'index': indexName,
                         'type': typeName,
                         'body': {
                             'doc': data
                         }
-                    });
+                    };
+
+                    if (parentId) {
+                        params.parent = parentId;
+                    }
+
+                    return client.update(params);
                 },
 
                 runOperation = function (resolve, reject) {
@@ -533,13 +588,13 @@ exports.put = function (data) {
                     }
 
                     // GET the data as it exists now...
-                    get(data.id).ofType(typeName).from(indexName)
+                    get(data.id).ofType(typeName).withParent(parentId).from(indexName)
                         // ...update...
                         .then(updateExistingData)
                         // now GET the data again just to make certain it is written and to
                         // make sure that the actual data returned is the version stored.
                         .then(function (updateResponse) {
-                            return get(updateResponse._id).ofType(typeName).from(indexName);
+                            return get(updateResponse._id).ofType(typeName).withParent(parentId).from(indexName);
                         })
                         .then(resolve)
                         .catch(function (error) {
@@ -563,7 +618,8 @@ exports.put = function (data) {
  * @return {object}
  */
 exports.deleteById = function (id) {
-    var typeName;
+    var typeName,
+        parentId;
 
     return {
         ofType: function (_typeName) {
@@ -571,13 +627,24 @@ exports.deleteById = function (id) {
             return this;
         },
 
+        withParent: function (_parent) {
+            parentId = _parent;
+            return this;
+        },
+
         from: function (indexName) {
             var runDelete = function (resolve, reject) {
-                client.delete({
+                var params = {
                     index: indexName,
                     type: typeName,
                     id: id
-                }, function (error, result) {
+                };
+
+                if (parentId) {
+                    params.parent = parentId;
+                }
+
+                client.delete(params, function (error, result) {
 
                     if (error) {
                         reject(adaptError(error));
