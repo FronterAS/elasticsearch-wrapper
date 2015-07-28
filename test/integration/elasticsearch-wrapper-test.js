@@ -29,7 +29,7 @@ var assert        = require('assert'),
     childTestData = {
         type: childTestType,
         index: testIndex,
-        parent: 1,
+        parent: testData[2].index._id,
         body: {
             name: 'A child example'
         }
@@ -325,6 +325,15 @@ describe('elasticsearch-wrapper', function () {
 
             expect(result).to.become(expected)
                 .notify(done);
+        });
+
+        it('should get a parent document by id and its child documents', function (done) {
+            DB.get(testData[2].index._id).ofType(testType).from(testIndex)
+                .then(function (results) {
+                    done();
+                })
+                .catch(done)
+                .done();
         });
 
         it('should throw a TypeError when type is not supplied', function (done) {
